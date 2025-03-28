@@ -32,7 +32,6 @@ else:
 
 print("device:", device)
 
-
 # ---------------------------- parser --------------------------
 # ---------------------------------------------------------------
 def parse_args():
@@ -57,14 +56,15 @@ def parse_args():
     parser.add_argument("--no-cuda", action="store_true")
     parser.add_argument("--batch-size", type=int, default=4096)
     parser.add_argument("--n-log-steps", type=int, default=100)
-    parser.add_argument("--n-steps", type=int, default=100001)
+    parser.add_argument("--n-steps", type=int, default=10001)
     parser.add_argument("--resume-training", action="store_false")
     parser.add_argument("--n-views", type=int, default=4)  # number of views we consider
     parser.add_argument(
         "--S-k",
         type=int,
         help="view-specific latents",
-        default=[[0, 1, 2, 3, 4], [0, 1, 2, 4, 5], [0, 1, 2, 3, 5], [0, 1, 3, 4, 5]],
+        default = [[0, 1], [0, 2]],
+        # default=[[0, 1, 2, 3, 4], [0, 1, 2, 4, 5], [0, 1, 2, 3, 5], [0, 1, 3, 4, 5]],
     )
     parser.add_argument("--grid-search-eval", action="store_true")
     parser.add_argument("--shared-mixing-function", type=bool, default=False)
@@ -565,6 +565,8 @@ def generate_latent_space(args):
     latent_spaces_list.append(latent_spaces.LatentSpace(space=space, sample_latent=sample_latent))
     latent_space = latent_spaces.ProductLatentSpace(spaces=latent_spaces_list)
     return latent_space
+
+
 
 
 # ------------------ Evaluate --------------------
