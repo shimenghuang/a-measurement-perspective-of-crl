@@ -1,5 +1,6 @@
 import argparse
 import csv
+import gc
 import json
 import os
 import sys
@@ -19,7 +20,7 @@ from pycomets.gcm import GCM
 from pycomets.pcm import PCM
 from pycomets.regression import LM
 
-sys.path.append("/nfs/scistore19/locatgrp/shuang/multiview-crl")
+sys.path.append("/nfs/scistore19/locatgrp/shuang/multiview-crl-eval")
 from encoders import CompositionEncMix, get_mlp
 from invertible_network_utils import construct_invertible_mlp
 from latent_spaces import LatentSpace, ProductLatentSpace
@@ -31,7 +32,7 @@ from utils import (
     topk_gumbel_softmax,
 )
 
-save_dir = "/nfs/scistore19/locatgrp/shuang/multiview-crl/results/numerical/gumbel_softmax"
+save_dir = "/nfs/scistore19/locatgrp/shuang/multiview-crl-eval/results/numerical/gumbel_softmax"
 model_path = os.path.join(save_dir, "model.pt")
 setting_path = os.path.join(save_dir, "settings.json")
 # ckpt = torch.load(model_path)
@@ -60,7 +61,9 @@ def generate_nonlinear_model():
     return model
 
 
-def infer_content_indices_gumbel_softmax(args, hzs: dict, content_size_dict: dict):
+def infer_content_indices_gumbel_softmax(
+    args, hzs: dict, content_size_dict: dict
+):
     """
     Infer content indices using Gumbel Softmax (content sizes predefined).
 
@@ -83,7 +86,9 @@ def infer_content_indices_gumbel_softmax(args, hzs: dict, content_size_dict: dic
                 hard=True,
             )
             c_ind = torch.where(m)[-1].tolist()  # batch_size, nSk
-            est_content_dict[subset][k] = c_ind  # this indicies is different for different views
+            est_content_dict[subset][
+                k
+            ] = c_ind  # this indicies is different for different views
     return est_content_dict
 
 
@@ -107,12 +112,21 @@ def infer_content_indices(args, hzs, *mode_specific_args):
     elif args.selection == "concat":
         return args.est_content_dict
     elif args.selection == "gumbel_softmax":
-        return infer_content_indices_gumbel_softmax(args, hzs, *mode_specific_args)
+        return infer_content_indices_gumbel_softmax(
+            args, hzs, *mode_specific_args
+        )
     else:
         raise ValueError(f"mode={args.selection} not supported")
 
 
-def generate_data(latent_space, models, num_batches=1, batch_size=4096, loss_func=None, args=None):
+def generate_data(
+    latent_space,
+    models,
+    num_batches=1,
+    batch_size=4096,
+    loss_func=None,
+    args=None,
+):
     """
     Generate data for training or evaluation.
 
@@ -136,12 +150,17 @@ def generate_data(latent_space, models, num_batches=1, batch_size=4096, loss_fun
     if (args.subsets is None) or (args.subsets == []):
         data_dict = {}
     else:
-        data_dict = {subset: {k: {"c": [], "s": []} for k in subset} for subset in args.subsets}
+        data_dict = {
+            subset: {k: {"c": [], "s": []} for k in subset}
+            for subset in args.subsets
+        }
 
     hz_dict = {
         k: {
             "hz": [],  # unified encoded information
-            "est_c_ind": {s: [] for s in args.subsets if k in s},  # for all subsets
+            "est_c_ind": {
+                s: [] for s in args.subsets if k in s
+            },  # for all subsets
         }
         for k in range(args.n_views)
     }
@@ -157,8 +176,12 @@ def generate_data(latent_space, models, num_batches=1, batch_size=4096, loss_fun
 
             # compute the estimated latents for each view (using the unified encoder)
             for k in range(args.n_views):
-                hz = models["backbone"].view_specific_forward(zs, k, args.S_k)  # [batch_size, nz]
-                hzs[k] = {"hz": hz}  # to compute the readout, preserve ternsor type
+                hz = models["backbone"].view_specific_forward(
+                    zs, k, args.S_k
+                )  # [batch_size, nz]
+                hzs[k] = {
+                    "hz": hz
+                }  # to compute the readout, preserve ternsor type
                 hz_dict[k]["hz"].append(hz.detach().cpu().numpy())
 
             for subset_idx, subset in enumerate(args.subsets):
@@ -167,12 +190,20 @@ def generate_data(latent_space, models, num_batches=1, batch_size=4096, loss_fun
                     style_z = zs[:, list(args.style_dict[subset][k])]
                     # z_Sk = zs[:, args.S_k[k]]
 
-                    est_content_dict = infer_content_indices(args, hzs, args.content_size_dict)
+                    est_content_dict = infer_content_indices(
+                        args, hzs, args.content_size_dict
+                    )
                     # append data
-                    data_dict[subset][k]["c"].append(content_z.detach().cpu().numpy())
-                    data_dict[subset][k]["s"].append(style_z.detach().cpu().numpy())
+                    data_dict[subset][k]["c"].append(
+                        content_z.detach().cpu().numpy()
+                    )
+                    data_dict[subset][k]["s"].append(
+                        style_z.detach().cpu().numpy()
+                    )
 
-                    hz_dict[k]["est_c_ind"][subset].append(est_content_dict[subset][k])
+                    hz_dict[k]["est_c_ind"][subset].append(
+                        est_content_dict[subset][k]
+                    )
 
         for subset, subset_dict in data_dict.items():
             for k, k_dict in subset_dict.items():
@@ -199,8 +230,12 @@ def generate_latent_space(args):
         else:
             # In the non-dependent case, we generate a set of dependent and non-dependent latent variables
             Sigma_z = np.eye(args.latent_dim)
-            Sigma_z_dep = wishart.rvs(args.n_dependent_dims, np.eye(args.n_dependent_dims), size=1)
-            Sigma_z[: args.n_dependent_dims, : args.n_dependent_dims] = Sigma_z_dep
+            Sigma_z_dep = wishart.rvs(
+                args.n_dependent_dims, np.eye(args.n_dependent_dims), size=1
+            )
+            Sigma_z[: args.n_dependent_dims, : args.n_dependent_dims] = (
+                Sigma_z_dep
+            )
 
         np.savetxt(Sigma_z_path, Sigma_z, delimiter=",")
     else:
@@ -212,7 +247,9 @@ def generate_latent_space(args):
     def sample_latent(space, size, device=device):
         return space.normal(None, 1.0, size, device, Sigma=Sigma_z)
 
-    latent_spaces_list.append(LatentSpace(space=space, sample_latent=sample_latent))
+    latent_spaces_list.append(
+        LatentSpace(space=space, sample_latent=sample_latent)
+    )
     latent_space = ProductLatentSpace(spaces=latent_spaces_list)
     return latent_space
 
@@ -230,7 +267,9 @@ def init_or_load_mixing_fns(device, args):
     """
     # Invertible MLP requires the same input and the same output size
     # extend to multi-view case
-    F = torch.nn.ModuleList()  # set of mixing functions, not trainable after generated.
+    F = (
+        torch.nn.ModuleList()
+    )  # set of mixing functions, not trainable after generated.
     for i in range(args.n_views):
         f_i = construct_invertible_mlp(
             n=len(args.S_k[i]),
@@ -241,7 +280,9 @@ def init_or_load_mixing_fns(device, args):
         F.append(f_i)
     if args.evaluate:
         F = torch.nn.ModuleList()
-        mixing_fn_state_dict = torch.load(os.path.join(args.save_dir, "mixing_fns.pt"))
+        mixing_fn_state_dict = torch.load(
+            os.path.join(args.save_dir, "mixing_fns.pt")
+        )
         for i, param_dict in mixing_fn_state_dict.items():
             f_i = construct_invertible_mlp(
                 n=len(args.S_k[i]),
@@ -337,7 +378,9 @@ def init_or_load_training_models(mixing_fns, encoderes, device, args):
     return {"backbone": backbone}
 
 
-def init_or_load_optimizer(models: dict, optimizer_class=torch.optim.Adam, args=None):
+def init_or_load_optimizer(
+    models: dict, optimizer_class=torch.optim.Adam, args=None
+):
     """
     Initialize or load the optimizer for the models.
 
@@ -355,7 +398,9 @@ def init_or_load_optimizer(models: dict, optimizer_class=torch.optim.Adam, args=
         params = models["backbone"].encoders[0].parameters()
     else:
         for g_i in models["backbone"].encoders:
-            params = params + list(g_i.parameters())  # encoders' parameters are trainable
+            params = params + list(
+                g_i.parameters()
+            )  # encoders' parameters are trainable
 
     """Define Adam optimiser"""
     optimizer = optimizer_class(params, lr=args.lr)
@@ -373,14 +418,18 @@ def update_args(args):
     Returns:
         Namespace: The updated arguments.
     """
-    zs_views = torch.tensor(args.S_k)  # [n_views, n_sk] # the view-specific latents as given in args.
+    zs_views = torch.tensor(
+        args.S_k
+    )  # [n_views, n_sk] # the view-specific latents as given in args.
 
     # retrieve subsets, content dict and style dict for all subsets and views
     if args.subsets is None:
         psets, _ = powerset(range(args.n_views), only_consider_whole_set=False)
         setattr(args, "subsets", psets)
 
-    content_dict, style_dict = content_style_from_subsets(subsets=args.subsets, zs=zs_views)
+    content_dict, style_dict = content_style_from_subsets(
+        subsets=args.subsets, zs=zs_views
+    )
     setattr(args, "content_dict", content_dict)
     setattr(args, "style_dict", style_dict)
 
@@ -398,12 +447,17 @@ def update_args(args):
     if args.selection == "ground_truth":
         for s in args.subsets:
             for k in s:
-                view_specific_content_indexing[s][k] = [args.S_k[k].index(c) for c in args.content_dict[s]]
+                view_specific_content_indexing[s][k] = [
+                    args.S_k[k].index(c) for c in args.content_dict[s]
+                ]
         args.view_specific_content_indexing = view_specific_content_indexing
     elif args.selection == "concat":  # concat all content indices
-        est_content_indices = np.array_split(range(args.encoding_size), len(args.subsets))
+        est_content_indices = np.array_split(
+            range(args.encoding_size), len(args.subsets)
+        )
         args.est_content_dict = {
-            subset: {k: indices for k in subset} for subset, indices in zip(args.subsets, est_content_indices)
+            subset: {k: indices for k in subset}
+            for subset, indices in zip(args.subsets, est_content_indices)
         }
     return args
 
@@ -412,91 +466,168 @@ def parse_args(dargs):
     return argparse.Namespace(**dargs)
 
 
+if torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
 args = parse_args(dargs)
 args = update_args(args)
 latent_space = generate_latent_space(args)
-mixing_fns = init_or_load_mixing_fns(device, args)  # mixing function always gives S_k
+mixing_fns = init_or_load_mixing_fns(
+    device, args
+)  # mixing function always gives S_k
 encoders = init_or_load_encoder_models(
-    device, args, encoding_size=args.encoding_size if args.selection == "concat" else None
+    device,
+    args,
+    encoding_size=args.encoding_size if args.selection == "concat" else None,
 )
-models = init_or_load_training_models(mixing_fns=mixing_fns, encoderes=encoders, device=device, args=args)
+models = init_or_load_training_models(
+    mixing_fns=mixing_fns, encoderes=encoders, device=device, args=args
+)
 params, optimizer = init_or_load_optimizer(models=models, args=args)
 
-if args.evaluate:
-    num_batches = args.num_eval_batches
-    file_name = "Evaluation"
-else:
-    num_batches = 1
-    file_name = "Training"
-
+num_batches = args.num_eval_batches
+file_name = "Evaluation"
+args.evaluate = True
 
 # lightweight evaluation with linear classifiers
-data_dict, hz_dict, all_zs = generate_data(latent_space=latent_space, models=models, num_batches=num_batches, args=args)
+data_dict, hz_dict, all_zs = generate_data(
+    latent_space=latent_space, models=models, num_batches=num_batches, args=args
+)
 
 
 # standardize the estimated latents hz
 data_shape = hz_dict[0]["hz"].shape  # [num_batches, batch_size, nSk]
 for k, v in hz_dict.items():
-    hz_dict[k]["hz"] = StandardScaler().fit_transform(np.concatenate(v["hz"], axis=0)).reshape(*data_shape)
+    hz_dict[k]["hz"] = (
+        StandardScaler()
+        .fit_transform(np.concatenate(v["hz"], axis=0))
+        .reshape(*data_shape)
+    )
 
-k = 0
-l = 1
-i = 0
+k = 0  # view 1
+l = 1  # view 2
+i = 3  # batch number
 subset = (0, 1)
 predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
 batch_size = hz_dict[k]["hz"][i].shape[0]
-inputs1 = np.take_along_axis(hz_dict[k]["hz"][i], np.tile(predicted_content_idx[None], (batch_size, 1)), axis=-1)
-inputs2 = np.take_along_axis(hz_dict[l]["hz"][i], np.tile(predicted_content_idx[None], (batch_size, 1)), axis=-1)
-z1 = all_zs[i, :, 0][:, None]
-z2 = all_zs[i, :, 1][:, None]
+# recovered Z from view 0
+z0_hat0 = np.take_along_axis(
+    hz_dict[k]["hz"][i],
+    np.tile(predicted_content_idx[None], (batch_size, 1)),
+    axis=-1,
+)
+# recovered Z from view 1
+z0_hat1 = np.take_along_axis(
+    hz_dict[l]["hz"][i],
+    np.tile(predicted_content_idx[None], (batch_size, 1)),
+    axis=-1,
+)
+z0 = all_zs[i, :, 0][:, None]
+z1 = all_zs[i, :, 1][:, None]
+z2 = all_zs[i, :, 2][:, None]
 pcm = PCM()
-pcm.test(reg_yonxz=LM(), reg_ronz=LM(), reg_vonxz=LM(), reg_yhatonz=LM(), reg_yonz=LM(), Y=inputs1, X=z2, Z=z1)
-pcm.test(reg_yonxz=LM(), reg_ronz=LM(), reg_vonxz=LM(), reg_yhatonz=LM(), reg_yonz=LM(), Y=z2, X=inputs1, Z=z1)
-gcm = GCM()
-gcm.test(reg_yz=LM(), reg_xz=LM(), Y=inputs1, X=z2, Z=z1)
+pcm.test(
+    reg_yonxz=LM(),
+    reg_ronz=LM(),
+    reg_vonxz=LM(),
+    reg_yhatonz=LM(),
+    reg_yonz=LM(),
+    Y=z1,
+    X=z0_hat0,
+    Z=z0,
+    estimate_variance=False,
+)
+pcm.test(
+    reg_yonxz=LM(),
+    reg_ronz=LM(),
+    reg_vonxz=LM(),
+    reg_yhatonz=LM(),
+    reg_yonz=LM(),
+    Y=z2,
+    X=z0_hat1,
+    Z=z0,
+    estimate_variance=False,
+)
 
-# predict individual latents from the estimated content block
-for subset_idx, subset in enumerate(data_dict):
-    scores = {latent_idx: {"linear": [], "nonlinear": []} for latent_idx in range(args.latent_dim)}
-    for k in subset:
-        for i in range(num_batches):
-            predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
-            batch_size = hz_dict[k]["hz"][i].shape[0]
-            inputs = np.take_along_axis(
-                hz_dict[k]["hz"][i], np.tile(predicted_content_idx[None], (batch_size, 1)), axis=-1
-            )
-            for latent_idx in range(args.latent_dim):
-                # labels = StandardScaler().fit_transform(data_dict[subset][k][keyword])
-                labels = all_zs[i, :, latent_idx][:, None]  # [batch_size, n_keyword]
-                (
-                    train_inputs,
-                    test_inputs,
-                    train_labels,
-                    test_labels,
-                ) = train_test_split(inputs, labels)
-                data = [train_inputs, train_labels, test_inputs, test_labels]
-                r2_linear = evaluate_prediction(linear_model.LinearRegression(n_jobs=-1), r2_score, *data)
-                if args.evaluate:
-                    # nonlinear regression
-                    r2_nonlinear = evaluate_prediction(generate_nonlinear_model(), r2_score, *data)
-                else:
-                    r2_nonlinear = -1.0  # not computed
-                scores[latent_idx]["linear"].append(r2_linear)
-                scores[latent_idx]["nonlinear"].append(r2_nonlinear)
-        for latent_idx in range(args.latent_dim):
-            file_path = os.path.join(args.save_dir, f"{file_name}.csv")
-            fileobj = open(file_path, "a+")
-            writer = csv.writer(fileobj)
-            wri = [
-                subset,
-                "view",
-                k,
-                "latent_idx",
-                latent_idx,
-                "linear mean",
-                f"{np.mean(scores[latent_idx]['linear']):.3f} +- {np.std(scores[latent_idx]['linear']) :.3f}",
-                "nonlinear mean",
-                f"{np.mean(scores[latent_idx]['nonlinear']):.3f} +- {np.std(scores[latent_idx]['nonlinear']):.3f}",
-            ]
-            writer.writerow(wri)
-            fileobj.close()
+gcm = GCM()
+gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat0, X=z1, Z=z0)
+print(f'gcm resid cor view 0: {gcm.get_cor(type="pearson")}')
+plt.cla()
+plt.scatter(gcm.rX, gcm.rY)
+plt.savefig("tmp_gcm0.jpeg")
+
+gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat1, X=z2, Z=z0)
+print(f'gcm resid cor view 1: {gcm.get_cor(type="pearson")}')
+plt.cla()
+plt.scatter(gcm.rX, gcm.rY)
+plt.savefig("tmp_gcm1.jpeg")
+
+gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat0, X=z2, Z=z0)
+print(gcm.get_cor(type="pearson"))
+plt.cla()
+plt.scatter(gcm.rX, gcm.rY)
+plt.savefig("tmp.jpeg")
+
+gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat1, X=z1, Z=z0)
+print(gcm.get_cor(type="pearson"))
+plt.cla()
+plt.scatter(gcm.rX, gcm.rY)
+plt.savefig("tmp.jpeg")
+
+# # predict individual latents from the estimated content block
+# for subset_idx, subset in enumerate(data_dict):
+#     scores = {
+#         latent_idx: {"linear": [], "nonlinear": []}
+#         for latent_idx in range(args.latent_dim)
+#     }
+#     for k in subset:
+#         for i in range(num_batches):
+#             predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
+#             batch_size = hz_dict[k]["hz"][i].shape[0]
+#             inputs = np.take_along_axis(
+#                 hz_dict[k]["hz"][i],
+#                 np.tile(predicted_content_idx[None], (batch_size, 1)),
+#                 axis=-1,
+#             )
+#             for latent_idx in range(args.latent_dim):
+#                 # labels = StandardScaler().fit_transform(data_dict[subset][k][keyword])
+#                 labels = all_zs[i, :, latent_idx][
+#                     :, None
+#                 ]  # [batch_size, n_keyword]
+#                 (
+#                     train_inputs,
+#                     test_inputs,
+#                     train_labels,
+#                     test_labels,
+#                 ) = train_test_split(inputs, labels)
+#                 data = [train_inputs, train_labels, test_inputs, test_labels]
+#                 r2_linear = evaluate_prediction(
+#                     linear_model.LinearRegression(n_jobs=-1), r2_score, *data
+#                 )
+#                 if args.evaluate:
+#                     # nonlinear regression
+#                     r2_nonlinear = evaluate_prediction(
+#                         generate_nonlinear_model(), r2_score, *data
+#                     )
+#                 else:
+#                     r2_nonlinear = -1.0  # not computed
+#                 scores[latent_idx]["linear"].append(r2_linear)
+#                 scores[latent_idx]["nonlinear"].append(r2_nonlinear)
+#         for latent_idx in range(args.latent_dim):
+#             file_path = os.path.join(args.save_dir, f"{file_name}.csv")
+#             fileobj = open(file_path, "a+")
+#             writer = csv.writer(fileobj)
+#             wri = [
+#                 subset,
+#                 "view",
+#                 k,
+#                 "latent_idx",
+#                 latent_idx,
+#                 "linear mean",
+#                 f"{np.mean(scores[latent_idx]['linear']):.3f} +- {np.std(scores[latent_idx]['linear']) :.3f}",
+#                 "nonlinear mean",
+#                 f"{np.mean(scores[latent_idx]['nonlinear']):.3f} +- {np.std(scores[latent_idx]['nonlinear']):.3f}",
+#             ]
+#             writer.writerow(wri)
+#             fileobj.close()
