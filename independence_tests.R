@@ -65,6 +65,24 @@ ggpubr::ggarrange(p1, p2, p3, p4, p5, p6,
 
 dev.off()
 
+p0 <- z_all %>%
+  ggplot(aes(x = z1, y = z2)) +
+  geom_point() +
+  theme_bw()
+
+agg_jpeg(
+  paste0(
+    "results/numerical/gumbel_softmax/scatter_z1z2_batch",
+    batch_num, ".jpg"
+  ),
+  width = 10, height = 10,
+  units = "in", res = 300
+)
+
+ggpubr::ggarrange(p0)
+
+dev.off()
+
 # conditional indepedneces with comets
 gcm_z0_est0 <- gcm(
   X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0,
