@@ -1,3 +1,9 @@
+.Rprofile
+.lintr
+*.jpeg
+*.png
+*.pdf
+
 results
 model
 # Byte-compiled / optimized / DLL files

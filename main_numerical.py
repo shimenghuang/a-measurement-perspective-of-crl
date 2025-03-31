@@ -25,7 +25,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 if torch.cuda.is_available():
-    device = "cuda"
+    device = "cuda:1"
 else:
     device = "cpu"
 
@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--no-cuda", action="store_true")
     parser.add_argument("--batch-size", type=int, default=4096)
     parser.add_argument("--n-log-steps", type=int, default=100)
-    parser.add_argument("--n-steps", type=int, default=50001)
+    parser.add_argument("--n-steps", type=int, default=100001)
     parser.add_argument("--resume-training", action="store_false")
     parser.add_argument(
         "--n-views", type=int, default=2
@@ -72,7 +72,7 @@ def parse_args():
         default=[[0, 1], [0, 2]],
     )
     parser.add_argument(
-        "--B", type=float, default=[[0, 0.5, 0.5], [0, 0, 0], [0, 0, 0]]
+        "--B", type=float, default=[[0, 1, 1], [0, 0, 0], [0, 0, 0]]
     )
     parser.add_argument("--grid-search-eval", action="store_true")
     parser.add_argument("--shared-mixing-function", type=bool, default=False)
@@ -615,7 +615,7 @@ def generate_latent_space(args):
             BB = np.array(args.B)
             IB = np.eye(args.latent_dim) - BB
             IB_inv = np.linalg.inv(IB)
-            Sigma_z = IB_inv.T @ IB_inv
+            Sigma_z = IB_inv @ IB_inv.T
         else:
             # In the non-dependent case, we generate a set of dependent and non-dependent latent variables
             Sigma_z = np.eye(args.latent_dim)

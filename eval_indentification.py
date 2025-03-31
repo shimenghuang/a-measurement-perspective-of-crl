@@ -1,6 +1,5 @@
 import argparse
 import csv
-import gc
 import json
 import os
 import sys
@@ -467,7 +466,7 @@ def parse_args(dargs):
 
 
 if torch.cuda.is_available():
-    device = "cuda"
+    device = "cuda:1"
 else:
     device = "cpu"
 args = parse_args(dargs)
@@ -507,7 +506,7 @@ for k, v in hz_dict.items():
 
 k = 0  # view 1
 l = 1  # view 2
-i = 3  # batch number
+i = 0  # batch number
 subset = (0, 1)
 predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
 batch_size = hz_dict[k]["hz"][i].shape[0]
@@ -523,9 +522,17 @@ z0_hat1 = np.take_along_axis(
     np.tile(predicted_content_idx[None], (batch_size, 1)),
     axis=-1,
 )
+z0_est = np.column_stack([z0_hat0, z0_hat1])
+file_path = os.path.join(args.save_dir, f"z0est_batch{i}.csv")
+np.savetxt(file_path, z0_est, delimiter=",")
+
 z0 = all_zs[i, :, 0][:, None]
 z1 = all_zs[i, :, 1][:, None]
 z2 = all_zs[i, :, 2][:, None]
+z_true = np.column_stack([z0, z1, z2])
+file_path = os.path.join(args.save_dir, f"ztrue_batch{i}.csv")
+np.savetxt(file_path, z_true, delimiter=",")
+
 pcm = PCM()
 pcm.test(
     reg_yonxz=LM(),
@@ -575,59 +582,59 @@ plt.cla()
 plt.scatter(gcm.rX, gcm.rY)
 plt.savefig("tmp.jpeg")
 
-# # predict individual latents from the estimated content block
-# for subset_idx, subset in enumerate(data_dict):
-#     scores = {
-#         latent_idx: {"linear": [], "nonlinear": []}
-#         for latent_idx in range(args.latent_dim)
-#     }
-#     for k in subset:
-#         for i in range(num_batches):
-#             predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
-#             batch_size = hz_dict[k]["hz"][i].shape[0]
-#             inputs = np.take_along_axis(
-#                 hz_dict[k]["hz"][i],
-#                 np.tile(predicted_content_idx[None], (batch_size, 1)),
-#                 axis=-1,
-#             )
-#             for latent_idx in range(args.latent_dim):
-#                 # labels = StandardScaler().fit_transform(data_dict[subset][k][keyword])
-#                 labels = all_zs[i, :, latent_idx][
-#                     :, None
-#                 ]  # [batch_size, n_keyword]
-#                 (
-#                     train_inputs,
-#                     test_inputs,
-#                     train_labels,
-#                     test_labels,
-#                 ) = train_test_split(inputs, labels)
-#                 data = [train_inputs, train_labels, test_inputs, test_labels]
-#                 r2_linear = evaluate_prediction(
-#                     linear_model.LinearRegression(n_jobs=-1), r2_score, *data
-#                 )
-#                 if args.evaluate:
-#                     # nonlinear regression
-#                     r2_nonlinear = evaluate_prediction(
-#                         generate_nonlinear_model(), r2_score, *data
-#                     )
-#                 else:
-#                     r2_nonlinear = -1.0  # not computed
-#                 scores[latent_idx]["linear"].append(r2_linear)
-#                 scores[latent_idx]["nonlinear"].append(r2_nonlinear)
-#         for latent_idx in range(args.latent_dim):
-#             file_path = os.path.join(args.save_dir, f"{file_name}.csv")
-#             fileobj = open(file_path, "a+")
-#             writer = csv.writer(fileobj)
-#             wri = [
-#                 subset,
-#                 "view",
-#                 k,
-#                 "latent_idx",
-#                 latent_idx,
-#                 "linear mean",
-#                 f"{np.mean(scores[latent_idx]['linear']):.3f} +- {np.std(scores[latent_idx]['linear']) :.3f}",
-#                 "nonlinear mean",
-#                 f"{np.mean(scores[latent_idx]['nonlinear']):.3f} +- {np.std(scores[latent_idx]['nonlinear']):.3f}",
-#             ]
-#             writer.writerow(wri)
-#             fileobj.close()
+# predict individual latents from the estimated content block
+for subset_idx, subset in enumerate(data_dict):
+    scores = {
+        latent_idx: {"linear": [], "nonlinear": []}
+        for latent_idx in range(args.latent_dim)
+    }
+    for k in subset:
+        for i in range(num_batches):
+            predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
+            batch_size = hz_dict[k]["hz"][i].shape[0]
+            inputs = np.take_along_axis(
+                hz_dict[k]["hz"][i],
+                np.tile(predicted_content_idx[None], (batch_size, 1)),
+                axis=-1,
+            )
+            for latent_idx in range(args.latent_dim):
+                # labels = StandardScaler().fit_transform(data_dict[subset][k][keyword])
+                labels = all_zs[i, :, latent_idx][
+                    :, None
+                ]  # [batch_size, n_keyword]
+                (
+                    train_inputs,
+                    test_inputs,
+                    train_labels,
+                    test_labels,
+                ) = train_test_split(inputs, labels)
+                data = [train_inputs, train_labels, test_inputs, test_labels]
+                r2_linear = evaluate_prediction(
+                    linear_model.LinearRegression(n_jobs=-1), r2_score, *data
+                )
+                if args.evaluate:
+                    # nonlinear regression
+                    r2_nonlinear = evaluate_prediction(
+                        generate_nonlinear_model(), r2_score, *data
+                    )
+                else:
+                    r2_nonlinear = -1.0  # not computed
+                scores[latent_idx]["linear"].append(r2_linear)
+                scores[latent_idx]["nonlinear"].append(r2_nonlinear)
+        for latent_idx in range(args.latent_dim):
+            file_path = os.path.join(args.save_dir, f"{file_name}.csv")
+            fileobj = open(file_path, "a+")
+            writer = csv.writer(fileobj)
+            wri = [
+                subset,
+                "view",
+                k,
+                "latent_idx",
+                latent_idx,
+                "linear mean",
+                f"{np.mean(scores[latent_idx]['linear']):.3f} +- {np.std(scores[latent_idx]['linear']) :.3f}",
+                "nonlinear mean",
+                f"{np.mean(scores[latent_idx]['nonlinear']):.3f} +- {np.std(scores[latent_idx]['nonlinear']):.3f}",
+            ]
+            writer.writerow(wri)
+            fileobj.close()
