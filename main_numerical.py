@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--no-cuda", action="store_true")
     parser.add_argument("--batch-size", type=int, default=4096)
     parser.add_argument("--n-log-steps", type=int, default=100)
-    parser.add_argument("--n-steps", type=int, default=100001)
+    parser.add_argument("--n-steps", type=int, default=50001)
     parser.add_argument("--resume-training", action="store_false")
     parser.add_argument(
         "--n-views", type=int, default=2

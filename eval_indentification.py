@@ -31,17 +31,6 @@ from utils import (
     topk_gumbel_softmax,
 )
 
-save_dir = "/nfs/scistore19/locatgrp/shuang/multiview-crl-eval/results/numerical/gumbel_softmax"
-model_path = os.path.join(save_dir, "model.pt")
-setting_path = os.path.join(save_dir, "settings.json")
-# ckpt = torch.load(model_path)
-with open(setting_path, "r") as setting_path:
-    dargs = json.load(setting_path)
-    setting_path.close()
-dargs["save_dir"] = save_dir
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-num_batches = dargs["num_eval_batches"]
-
 
 def generate_nonlinear_model():
     if not args.grid_search_eval:
@@ -226,6 +215,11 @@ def generate_latent_space(args):
     if not args.evaluate:
         if args.n_dependent_dims == 0:
             Sigma_z = np.eye(args.latent_dim)
+        elif args.B is not None:
+            BB = np.array(args.B)
+            IB = np.eye(args.latent_dim) - BB
+            IB_inv = np.linalg.inv(IB)
+            Sigma_z = IB_inv @ IB_inv.T
         else:
             # In the non-dependent case, we generate a set of dependent and non-dependent latent variables
             Sigma_z = np.eye(args.latent_dim)
@@ -465,12 +459,26 @@ def parse_args(dargs):
     return argparse.Namespace(**dargs)
 
 
+## Evaluation ##
+
 if torch.cuda.is_available():
-    device = "cuda:1"
+    device = "cuda:2"
 else:
     device = "cpu"
+
+save_dir = "/nfs/scistore19/locatgrp/shuang/multiview-crl-eval/results/numerical/gumbel_softmax"
+# model_path = os.path.join(save_dir, "model.pt")
+setting_path = os.path.join(save_dir, "settings.json")
+with open(setting_path, "r") as setting_path:
+    dargs = json.load(setting_path)
+    setting_path.close()
+dargs["save_dir"] = save_dir
 args = parse_args(dargs)
 args = update_args(args)
+num_batches = args.num_eval_batches
+file_name = "Evaluation"
+args.evaluate = True  # Important to set to True here!
+
 latent_space = generate_latent_space(args)
 mixing_fns = init_or_load_mixing_fns(
     device, args
@@ -485,15 +493,9 @@ models = init_or_load_training_models(
 )
 params, optimizer = init_or_load_optimizer(models=models, args=args)
 
-num_batches = args.num_eval_batches
-file_name = "Evaluation"
-args.evaluate = True
-
-# lightweight evaluation with linear classifiers
 data_dict, hz_dict, all_zs = generate_data(
     latent_space=latent_space, models=models, num_batches=num_batches, args=args
 )
-
 
 # standardize the estimated latents hz
 data_shape = hz_dict[0]["hz"].shape  # [num_batches, batch_size, nSk]
@@ -582,6 +584,7 @@ plt.cla()
 plt.scatter(gcm.rX, gcm.rY)
 plt.savefig("tmp.jpeg")
 
+# (this run through all batches and compute the mean and std of the scores)
 # predict individual latents from the estimated content block
 for subset_idx, subset in enumerate(data_dict):
     scores = {

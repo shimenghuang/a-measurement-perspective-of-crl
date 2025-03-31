@@ -5,7 +5,7 @@ library(dplyr)
 library(ggpubr)
 library(ragg)
 
-batch_num <- 1
+batch_num <- 2
 z_true <- read.csv(paste0(
   "results/numerical/gumbel_softmax/ztrue_batch",
   batch_num, ".csv"
@@ -54,7 +54,7 @@ p6 <- z_all %>%
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-
+# save the plots
 agg_jpeg(
   paste0(
     "results/numerical/gumbel_softmax/scatter_batch",
@@ -72,10 +72,22 @@ ggpubr::ggarrange(p1, p2, p3, p4, p5, p6,
 dev.off()
 
 # conditional indepedneces with comets
-gcm_z0_est0 <- gcm(X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0)
-gcm_z0_est1 <- gcm(X = z_all$z0_est1, Y = z_all$z2, Z = z_all$z0)
-pcm_z0_est0 <- pcm(X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0)
-pcm_z0_est1 <- pcm(X = z_all$z0_est1, Y = z_all$z2, Z = z_all$z0)
+gcm_z0_est0 <- gcm(
+  X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0,
+  reg_YonZ = "lrm", reg_XonZ = "lrm"
+)
+gcm_z0_est1 <- gcm(
+  X = z_all$z0_est1, Y = z_all$z2, Z = z_all$z0,
+  reg_YonZ = "lrm", reg_XonZ = "lrm"
+)
+pcm_z0_est0 <- pcm(
+  X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0,
+  reg_YonZ = "lrm", reg_XonZ = "lrm"
+)
+pcm_z0_est1 <- pcm(
+  X = z_all$z0_est1, Y = z_all$z2, Z = z_all$z0,
+  reg_YonZ = "lrm", reg_XonZ = "lrm"
+)
 
 # marginal indepedences with dHSIC
 hsic_z0_est0 <- hsic.test(
