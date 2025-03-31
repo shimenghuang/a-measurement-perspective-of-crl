@@ -5,7 +5,7 @@ library(dplyr)
 library(ggpubr)
 library(ragg)
 
-batch_num <- 2
+batch_num <- 0
 z_true <- read.csv(paste0(
   "results/numerical/gumbel_softmax/ztrue_batch",
   batch_num, ".csv"
@@ -21,38 +21,32 @@ z_all <- data.frame(z_all)
 p1 <- z_all %>%
   ggplot(aes(x = z0, y = z0_est0)) +
   geom_point() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_bw()
 
 p2 <- z_all %>%
   ggplot(aes(x = z0, y = z0_est1)) +
   geom_point() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_bw()
 
 p3 <- z_all %>%
   ggplot(aes(x = z1, y = z0_est0)) +
   geom_point() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_bw()
 
 p4 <- z_all %>%
   ggplot(aes(x = z2, y = z0_est1)) +
   geom_point() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_bw()
 
 p5 <- z_all %>%
   ggplot(aes(x = z2, y = z0_est0)) +
   geom_point() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_bw()
 
 p6 <- z_all %>%
   ggplot(aes(x = z1, y = z0_est1)) +
   geom_point() +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_bw()
 
 # save the plots
 agg_jpeg(
@@ -89,9 +83,7 @@ pcm_z0_est1 <- pcm(
   reg_YonZ = "lrm", reg_XonZ = "lrm"
 )
 
-# marginal indepedences with dHSIC
-hsic_z0_est0 <- hsic.test(
-  z_all$z0_est0, z_all$z1,
-  method = "unbiased",
-  alpha = 0.05
-)
+# # marginal indepedences with dHSIC
+# hsic_z0_est0 <- dhsic(
+#   X = z_all$z0_est0, Y = z_all$z2,
+# )
