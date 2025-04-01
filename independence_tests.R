@@ -7,7 +7,7 @@ library(ragg)
 
 # ---- load data ----
 
-batch_num <- 0
+batch_num <- 1
 z_true <- read.csv(paste0(
   "results/numerical/gumbel_softmax/ztrue_batch",
   batch_num, ".csv"
@@ -17,6 +17,8 @@ z0_est <- read.csv(paste0(
   batch_num, ".csv"
 ))
 z_all <- cbind(z_true, z0_est)
+# z0_est0 is the recovered z0 from view 0
+# z0_est1 is the recovered z0 from view 1
 colnames(z_all) <- c("z0", "z1", "z2", "z0_est0", "z0_est1")
 z_all <- data.frame(z_all)
 
@@ -89,8 +91,13 @@ dev.off()
 
 # ---- conditional indepedneces with comets ----
 
+# Null hypotheses for conditional indepence tests
+# H0: z1 from view 1 is independent of z0_est0 given z0
+# H0: z2 from view 2 is independent of z0_est1 given z0
+
 reg_mod <- "lrm" # "lrm" for linear models
 
+# H0: E[residuals X | Z \times residuals Y |Z] = 0
 gcm_z0_est0 <- gcm(
   X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0,
   reg_YonZ = reg_mod, reg_XonZ = reg_mod
@@ -100,6 +107,7 @@ gcm_z0_est1 <- gcm(
   reg_YonZ = reg_mod, reg_XonZ = reg_mod
 )
 
+# H0: E[residuals Y | Z \times f(X,Z)] = 0 for all f
 pcm_z0_est0 <- pcm(
   X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0,
   reg_YonZ = reg_mod, reg_XonZ = reg_mod

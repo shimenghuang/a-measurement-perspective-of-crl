@@ -508,7 +508,7 @@ for k, v in hz_dict.items():
 
 k = 0  # view 1
 l = 1  # view 2
-i = 0  # batch number
+i = 1  # batch number
 subset = (0, 1)
 predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
 batch_size = hz_dict[k]["hz"][i].shape[0]
