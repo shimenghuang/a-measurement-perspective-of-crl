@@ -610,7 +610,9 @@ for subset_idx, subset in enumerate(data_dict):
                     test_inputs,
                     train_labels,
                     test_labels,
-                ) = train_test_split(inputs, labels)
+                ) = train_test_split(
+                    inputs, labels
+                )  # train_test_split(inputs, labels)
                 data = [train_inputs, train_labels, test_inputs, test_labels]
                 r2_linear = evaluate_prediction(
                     linear_model.LinearRegression(n_jobs=-1), r2_score, *data

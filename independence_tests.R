@@ -97,9 +97,29 @@ dev.off()
 
 reg_mod <- "lrm" # "lrm" for linear models
 
+gcm(
+  X = z_all$z0_est1, Y = z_all$z1, Z = z_all$z0,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+pcm(
+  X = z_all$z0_est1, Y = z_all$z1, Z = z_all$z0,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+gcm(
+  X = z_all$z0, Y = z_all$z1, Z = z_all$z0_est1,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+pcm(
+  X = z_all$z0, Y = z_all$z1, Z = z_all$z0_est1,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
 # H0: E[residuals X | Z \times residuals Y |Z] = 0
 gcm_z0_est0 <- gcm(
-  X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0,
+  X = z_all$z0 * 3, Y = z_all$z1, Z = z_all$z0,
   reg_YonZ = reg_mod, reg_XonZ = reg_mod
 )
 gcm_z0_est1 <- gcm(
@@ -194,3 +214,29 @@ ggpubr::ggarrange(p_res0, p_res1,
 )
 
 dev.off()
+
+# ---- small test ----
+
+n <- 5000
+Z1 <- rnorm(n)
+Z2 <- rnorm(n)
+Z3 <- rnorm(n)
+Z_S <- cbind(Z1, Z2)
+Z_Sh <- cbind(Z1 + Z2, Z1 - Z2)
+reg_mod <- "lrm" # "lrm" for linear models
+gcm(
+  X = Z_S, Y = Z3, Z = Z_Sh,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+gcm(
+  X = Z_Sh, Y = Z3, Z = Z_S,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+pcm(
+  X = Z_S, Y = Z3, Z = Z_Sh,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+pcm(
+  X = Z_Sh, Y = Z3, Z = Z_S,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
