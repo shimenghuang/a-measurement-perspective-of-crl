@@ -4,6 +4,7 @@ library(ggplot2)
 library(dplyr)
 library(ggpubr)
 library(ragg)
+library(xgboost)
 
 # ---- load data ----
 
@@ -11,11 +12,11 @@ batch_num <- 1
 z_true <- read.csv(paste0(
   "results/numerical/gumbel_softmax/ztrue_batch",
   batch_num, ".csv"
-))
+), header = FALSE)
 z0_est <- read.csv(paste0(
   "results/numerical/gumbel_softmax/z0est_batch",
   batch_num, ".csv"
-))
+), header = FALSE)
 z_all <- cbind(z_true, z0_est)
 # z0_est0 is the recovered z0 from view 0
 # z0_est1 is the recovered z0 from view 1
@@ -240,3 +241,167 @@ pcm(
   X = Z_Sh, Y = Z3, Z = Z_S,
   reg_YonZ = reg_mod, reg_XonZ = reg_mod
 )
+
+# ---- small test for factors ----
+
+val_label_text <- read.csv("results/multimodal3di/0/val_label_text.csv",
+  sep = " ",
+  header = FALSE
+)
+val_label_text <- val_label_text[, -4]
+# "object_shape", "object_ypos", "object_xpos",
+# "object_color_index", "text_phrasing"
+colnames(val_label_text) <- c("X1", "X2", "X3", "X4", "X5")
+
+V1 <- val_label_text$X1 + val_label_text$X2
+V2 <- val_label_text$X1 + val_label_text$X3
+V3 <- val_label_text$X2 + val_label_text$X3
+dat <- cbind(val_label_text, V1, V2, V3)
+
+reg_mod <- "rf"
+fm1 <- cbind(V1, V2, V3) ~ X4 + X5 | X1 + X2 + X3
+test1 <- comets(fm1, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+
+fm2 <- cbind(X1, X2, X3) ~ X4 + X5 | V1 + V2 + V3
+test2 <- comets(fm2, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+
+fm3 <- cbind(V1, V2, V3) ~ X1 + X2 + X3 | X4 + X5
+test3 <- comets(fm3, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+
+# ---- multimodal data (text) ----
+
+val_label_text <- read.csv("results/multimodal3di/0/val_label_text.csv",
+  sep = " ",
+  header = FALSE
+)
+val_label_text <- val_label_text[, -4]
+# "object_shape", "object_ypos", "object_xpos",
+# "object_color_index", "text_phrasing"
+colnames(val_label_text) <- c("X1", "X2", "X3", "X4", "X5")
+
+# content identified between view 0 and view 2
+ss <- "(0, 2)"
+val_hz_text <- read.csv(paste0(
+  "results/multimodal3di/0/val_hz_text_",
+  ss, ".csv"
+), sep = " ", header = FALSE)
+head(val_hz_text)
+
+dat <- cbind(val_label_text, val_hz_text)
+dat <- dat %>%
+  mutate(
+    X1 = as.factor(X1),
+    X2 = as.factor(X2),
+    X3 = as.factor(X3),
+    # X4 = as.numeric(X4),
+    X5 = as.factor(X5)
+  )
+
+idx_use <- sample(1:nrow(dat), 1000)
+dat <- dat[idx_use, ]
+
+reg_mod <- "lrm" # "tuned_rf" # "tuned_xgb", "tuned_rf"
+
+fm1 <- cbind(V1, V2, V3) ~ X4 + X5 | X1 + X2 + X3
+test1 <- comets(fm1, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+# cond indep accepted [:)]
+
+fm2 <- cbind(X1, X2, X3) ~ X4 + X5 | V1 + V2 + V3
+test2 <- comets(fm2, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+# cond indep rejected [:/]
+
+fm3 <- cbind(V1, V2, V3) ~ X1 + X2 + X3 | X4 + X5
+test3 <- comets(fm3, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+# cond indep accepted [:/]
+
+fm4 <- cbind(V1, V2, V3) ~ X1 + X2 + X3 + X5 | X4
+test4 <- comets(fm4, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+
+fm5 <- cbind(V1, V2, V3) ~ X1 + X2 + X3 + X4 | X5
+test5 <- comets(fm5, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+
+args <- list(
+  etas = c(0.01, 0.1),
+  nrounds = c(50, 100),
+  max_depths = 1:3,
+  verbose = 0
+)
+
+reg_mod <- "tuned_xgb"
+
+fm <- V1 ~ X1 + X2 + X3 | X4 + X5
+pcm_test1 <- comets(fm,
+  data = dat, reg_YonXZ = reg_mod, reg_YonZ = reg_mod, test = "pcm",
+  args_YonXZ = args, args_YonZ = args,
+  return_fitted_models = TRUE
+) # cond indep accepted [:/]
+
+fm <- V2 ~ X1 + X2 + X3 | X4 + X5
+pcm_test2 <- comets(fm,
+  data = dat, reg_YonXZ = reg_mod, reg_YonZ = reg_mod, test = "pcm",
+  args_YonXZ = args, args_YonZ = args
+) # cond indep accepted [:/]
+
+fm <- V3 ~ X1 + X2 + X3 | X4 + X5
+pcm_test3 <- comets(fm,
+  data = dat, reg_YonXZ = reg_mod, reg_YonZ = reg_mod, test = "pcm",
+  args_YonXZ = args, args_YonZ = args
+) # cond indep accepted [:/]
+
+
+agg_jpeg(
+  paste0(
+    "results/multimodal3di/0/scatter_pcm_",
+    reg_mod,
+    ".jpg"
+  ),
+  width = 10, height = 10,
+  units = "in", res = 300
+)
+plot(pcm_test1)
+dev.off()
+
+agg_jpeg(
+  paste0(
+    "results/multimodal3di/0/tmp",
+    ".jpg"
+  ),
+  width = 10, height = 10,
+  units = "in", res = 300
+)
+plot(x = dat$V2, y = dat$X3)
+dev.off()
+
+# ---- multimodal data (image) ----
+
+val_label_image <- read.csv("results/multimodal3di/0/val_label_image.csv",
+  sep = " ",
+  header = FALSE
+)
+val_label_image <- val_label_image[, -4]
+# "object_shape", "object_ypos", "object_xpos",
+# "object_color_index", "text_phrasing"
+colnames(val_label_image) <- paste0("X", 1:10)
+
+# content identified between view 0 and view 2
+ss <- "(0, 2)"
+val_hz_image <- read.csv(paste0(
+  "results/multimodal3di/0/val_hz_image_",
+  ss, ".csv"
+), sep = " ", header = FALSE)
+head(val_hz_image)
+
+dat <- cbind(val_label_image, val_hz_image)
+dat <- dat %>%
+  mutate(
+    X1 = as.factor(X1),
+    X2 = as.factor(X2),
+    X3 = as.factor(X3),
+    # X4 = as.numeric(X4),
+    X5 = as.factor(X5)
+  )
+
+reg_mod <- "tuned_rf"
+
+fm1 <- cbind(V1, V2, V3) ~ X4 + X5 + X6 + X7 + X8 + X9 + X10 | X1 + X2 + X3
+test1 <- comets(fm1, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)

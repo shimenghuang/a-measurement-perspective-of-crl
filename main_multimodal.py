@@ -669,6 +669,37 @@ def main(args: argparse.Namespace):
             num_samples=args.test_size,
         )
 
+        # breakpoint()
+        for key in val_dict["hz_text_subsets"].keys():
+            np.savetxt(
+                fname=os.path.join(args.save_dir, f"val_hz_text_{key}.csv"),
+                X=val_dict["hz_text_subsets"][key],
+            )
+        for key in val_dict["hz_image_subsets"].keys():
+            np.savetxt(
+                fname=os.path.join(args.save_dir, f"val_hz_image_{key}.csv"),
+                X=val_dict["hz_image_subsets"][key],
+            )
+        np.savetxt(
+            fname=os.path.join(args.save_dir, f"val_label_text.csv"),
+            X=np.array([val for val in val_dict["labels_text"].values()]).T,
+        )
+        np.savetxt(
+            fname=os.path.join(args.save_dir, f"val_label_image.csv"),
+            X=np.array([val for val in val_dict["labels_image"].values()]).T,
+        )
+
+        for key in test_dict["hz_text_subsets"].keys():
+            np.savetxt(
+                fname=os.path.join(args.save_dir, f"val_hz_text_{key}.csv"),
+                X=test_dict["hz_text_subsets"][key],
+            )
+        for key in test_dict["hz_image_subsets"].keys():
+            np.savetxt(
+                fname=os.path.join(args.save_dir, f"val_hz_image_{key}.csv"),
+                X=test_dict["hz_image_subsets"][key],
+            )
+
         # print average loss values
         print(f"<Val Loss>: {np.mean(val_dict['loss_values']):.4f}")
         print(f"<Test Loss>: {np.mean(test_dict['loss_values']):.4f}")
