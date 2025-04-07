@@ -8,7 +8,7 @@ library(xgboost)
 
 # ---- load data ----
 
-batch_num <- 1
+batch_num <- 5
 z_true <- read.csv(paste0(
   "results/numerical/gumbel_softmax/ztrue_batch",
   batch_num, ".csv"
@@ -17,6 +17,9 @@ z0_est <- read.csv(paste0(
   "results/numerical/gumbel_softmax/z0est_batch",
   batch_num, ".csv"
 ), header = FALSE)
+# z0_est0 <- 0.5 * z_true[, 1]
+# z0_est1 <- 0.5 * z_true[, 1]
+# z0_est <- cbind(z0_est0, z0_est1)
 z_all <- cbind(z_true, z0_est)
 # z0_est0 is the recovered z0 from view 0
 # z0_est1 is the recovered z0 from view 1
@@ -96,45 +99,65 @@ dev.off()
 # H0: z1 from view 1 is independent of z0_est0 given z0
 # H0: z2 from view 2 is independent of z0_est1 given z0
 
+# GCM H0: E[residuals X | Z \times residuals Y |Z] = 0
+# PCM H0: E[residuals Y | Z \times f(X,Z)] = 0 for all f
+
 reg_mod <- "lrm" # "lrm" for linear models
 
-gcm(
-  X = z_all$z0_est1, Y = z_all$z1, Z = z_all$z0,
-  reg_YonZ = reg_mod, reg_XonZ = reg_mod
-)
-
-pcm(
-  X = z_all$z0_est1, Y = z_all$z1, Z = z_all$z0,
-  reg_YonZ = reg_mod, reg_XonZ = reg_mod
-)
-
-gcm(
-  X = z_all$z0, Y = z_all$z1, Z = z_all$z0_est1,
-  reg_YonZ = reg_mod, reg_XonZ = reg_mod
-)
-
-pcm(
-  X = z_all$z0, Y = z_all$z1, Z = z_all$z0_est1,
-  reg_YonZ = reg_mod, reg_XonZ = reg_mod
-)
-
-# H0: E[residuals X | Z \times residuals Y |Z] = 0
 gcm_z0_est0 <- gcm(
-  X = z_all$z0 * 3, Y = z_all$z1, Z = z_all$z0,
-  reg_YonZ = reg_mod, reg_XonZ = reg_mod
-)
-gcm_z0_est1 <- gcm(
-  X = z_all$z0_est1, Y = z_all$z2, Z = z_all$z0,
+  X = z_all$z0_est0, Y = cbind(z_all$z1, z_all$z2), Z = z_all$z0,
   reg_YonZ = reg_mod, reg_XonZ = reg_mod
 )
 
-# H0: E[residuals Y | Z \times f(X,Z)] = 0 for all f
-pcm_z0_est0 <- pcm(
-  X = z_all$z0_est0, Y = z_all$z1, Z = z_all$z0,
+gcm_z0_est1 <- gcm(
+  X = z_all$z0_est1, Y = cbind(z_all$z1, z_all$z2), Z = z_all$z0,
   reg_YonZ = reg_mod, reg_XonZ = reg_mod
 )
+
+gcm_z0_est0_rev <- gcm(
+  X = z_all$z0, Y = cbind(z_all$z1, z_all$z2), Z = z_all$z0_est0,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+gcm_z0_est1_rev <- gcm(
+  X = z_all$z0, Y = cbind(z_all$z1, z_all$z2), Z = z_all$z0_est1,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+gcm(
+  X = z_all$z0, Y = cbind(z_all$z1, z_all$z2),
+  Z = cbind(z_all$z0_est0, z_all$z0_est1),
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+pcm_z0_est0 <- pcm(
+  X = cbind(z_all$z1, z_all$z2), Y = z_all$z0_est0, Z = z_all$z0,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
 pcm_z0_est1 <- pcm(
-  X = z_all$z0_est1, Y = z_all$z2, Z = z_all$z0,
+  X = cbind(z_all$z1, z_all$z2), Y = z_all$z0_est1, Z = z_all$z0,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+pcm_z0_est0_rev <- pcm(
+  X = cbind(z_all$z1, z_all$z2), Y = z_all$z0, Z = z_all$z0_est0,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+pcm_z0_est1_rev <- pcm(
+  X = cbind(z_all$z1, z_all$z2), Y = z_all$z0, Z = z_all$z0_est1,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+reg_mod <- "tuned_rf"
+pcm_z1_est0 <- pcm(
+  X = cbind(z_all$z0, z_all$z2), Y = z_all$z0_est1, Z = z_all$z1,
+  reg_YonZ = reg_mod, reg_XonZ = reg_mod
+)
+
+pcm_z1_est0 <- pcm(
+  X = z_all$z0_est0, Y = cbind(z_all$z1, z_all$z3), Z = z_all$z1,
   reg_YonZ = reg_mod, reg_XonZ = reg_mod
 )
 
@@ -172,9 +195,6 @@ write.csv(
 
 ## ---- plot the gcm residuals ----
 
-p_res0 <- plot(gcm_z0_est0)
-p_res1 <- plot(gcm_z0_est1)
-
 agg_jpeg(
   paste0(
     "results/numerical/gumbel_softmax/scatter_gcm_",
@@ -186,17 +206,19 @@ agg_jpeg(
   units = "in", res = 300
 )
 
-ggpubr::ggarrange(p_res0, p_res1,
-  ncol = 2, nrow = 1,
+p_res0 <- plot(gcm_z0_est0)
+p_res1 <- plot(gcm_z0_est1)
+p_res0_rev <- plot(gcm_z0_est0_rev)
+p_res1_rev <- plot(gcm_z0_est1_rev)
+
+ggpubr::ggarrange(p_res0, p_res1, p_res0_rev, p_res1_rev,
+  ncol = 2, nrow = 2,
   common.legend = TRUE
 )
 
 dev.off()
 
 ## ---- plot the pcm residuals ----
-
-p_res0 <- plot(pcm_z0_est0)
-p_res1 <- plot(pcm_z0_est1)
 
 agg_jpeg(
   paste0(
@@ -209,8 +231,13 @@ agg_jpeg(
   units = "in", res = 300
 )
 
-ggpubr::ggarrange(p_res0, p_res1,
-  ncol = 2, nrow = 1,
+p_res0 <- plot(pcm_z0_est0)
+p_res1 <- plot(pcm_z0_est1)
+p_res0_rev <- plot(pcm_z0_est0_rev)
+p_res1_rev <- plot(pcm_z0_est1_rev)
+
+ggpubr::ggarrange(p_res0, p_res1, p_res0_rev, p_res1_rev,
+  ncol = 2, nrow = 2,
   common.legend = TRUE
 )
 
@@ -297,33 +324,38 @@ dat <- dat %>%
     X5 = as.factor(X5)
   )
 
-idx_use <- sample(1:nrow(dat), 1000)
+idx_use <- sample(1:nrow(dat), 5000)
 dat <- dat[idx_use, ]
 
-reg_mod <- "lrm" # "tuned_rf" # "tuned_xgb", "tuned_rf"
+reg_mod <- "rf" # "tuned_rf" # "tuned_xgb", "tuned_rf"
 
 fm1 <- cbind(V1, V2, V3) ~ X4 + X5 | X1 + X2 + X3
 test1 <- comets(fm1, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+test1
 # cond indep accepted [:)]
 
 fm2 <- cbind(X1, X2, X3) ~ X4 + X5 | V1 + V2 + V3
 test2 <- comets(fm2, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
-# cond indep rejected [:/]
+test2
+# cond indep accepted [:)]
 
 fm3 <- cbind(V1, V2, V3) ~ X1 + X2 + X3 | X4 + X5
 test3 <- comets(fm3, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+test3
 # cond indep accepted [:/]
 
 fm4 <- cbind(V1, V2, V3) ~ X1 + X2 + X3 + X5 | X4
 test4 <- comets(fm4, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+test4
 
 fm5 <- cbind(V1, V2, V3) ~ X1 + X2 + X3 + X4 | X5
 test5 <- comets(fm5, data = dat, reg_YonZ = reg_mod, reg_XonZ = reg_mod)
+test5
 
 args <- list(
-  etas = c(0.01, 0.1),
-  nrounds = c(50, 100),
-  max_depths = 1:3,
+  etas = c(0.0025, 0.005, 0.01),
+  nrounds = c(25, 50, 100, 200),
+  max_depths = 1:5,
   verbose = 0
 )
 
@@ -335,6 +367,7 @@ pcm_test1 <- comets(fm,
   args_YonXZ = args, args_YonZ = args,
   return_fitted_models = TRUE
 ) # cond indep accepted [:/]
+pcm_test1$models$reg_YonXZ
 
 fm <- V2 ~ X1 + X2 + X3 | X4 + X5
 pcm_test2 <- comets(fm,

@@ -461,10 +461,12 @@ def parse_args(dargs):
 
 ## Evaluation ##
 
-if torch.cuda.is_available():
-    device = "cuda:2"
-else:
-    device = "cpu"
+device = "cpu"
+
+# if torch.cuda.is_available():
+#     device = "cuda:7"
+# else:
+#     device = "cpu"
 
 save_dir = "/nfs/scistore19/locatgrp/shuang/multiview-crl-eval/results/numerical/gumbel_softmax"
 # model_path = os.path.join(save_dir, "model.pt")
@@ -508,7 +510,7 @@ for k, v in hz_dict.items():
 
 k = 0  # view 1
 l = 1  # view 2
-i = 1  # batch number
+i = 5  # batch number
 subset = (0, 1)
 predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
 batch_size = hz_dict[k]["hz"][i].shape[0]
@@ -627,7 +629,9 @@ for subset_idx, subset in enumerate(data_dict):
                 scores[latent_idx]["linear"].append(r2_linear)
                 scores[latent_idx]["nonlinear"].append(r2_nonlinear)
         for latent_idx in range(args.latent_dim):
-            file_path = os.path.join(args.save_dir, f"{file_name}.csv")
+            file_path = os.path.join(
+                args.save_dir, f"{file_name}_input_to_label.csv"
+            )
             fileobj = open(file_path, "a+")
             writer = csv.writer(fileobj)
             wri = [

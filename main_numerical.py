@@ -72,7 +72,10 @@ def parse_args():
         default=[[0, 1], [0, 2]],
     )
     parser.add_argument(
-        "--B", type=float, default=[[0, 1, 1], [0, 0, 0], [0, 0, 0]]
+        # "--B", type=float, default=[[0, 1, 1], [0, 0, 0], [0, 0, 0]]
+        "--B",
+        type=float,
+        default=[[0, 0, 0], [1, 0, 0], [1, 1, 0]],
     )
     parser.add_argument("--grid-search-eval", action="store_true")
     parser.add_argument("--shared-mixing-function", type=bool, default=False)
@@ -85,7 +88,7 @@ def parse_args():
     )
     parser.add_argument("--subsets", default=None)
     parser.add_argument("--evaluate_individual_latents", action="store_true")
-    parser.add_argument("--n_dependent_dims", default=0, type=int)
+    parser.add_argument("--n_dependent_dims", default=3, type=int)
     args = parser.parse_args()
     return args, parser
 

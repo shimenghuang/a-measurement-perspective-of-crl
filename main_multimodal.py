@@ -669,6 +669,7 @@ def main(args: argparse.Namespace):
             num_samples=args.test_size,
         )
 
+        # save data to disk for analysis in R
         # breakpoint()
         for key in val_dict["hz_text_subsets"].keys():
             np.savetxt(
