@@ -25,7 +25,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 if torch.cuda.is_available():
-    device = "cuda:1"
+    device = "cuda:0"
 else:
     device = "cpu"
 
@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument("--encoding-size", type=int, default=20)
     parser.add_argument("--evaluate", action="store_true")  # by default false
     parser.add_argument("--num-train-batches", type=int, default=5)
-    parser.add_argument("--num-eval-batches", type=int, default=10)
+    parser.add_argument("--num-eval-batches", type=int, default=50)  # 10
     parser.add_argument(
         "--seed", type=int, default=np.random.randint(32**2 - 1)
     )

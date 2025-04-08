@@ -3,9 +3,9 @@ from causallearn.search.ConstraintBased.PC import pc
 from causallearn.utils.GraphUtils import GraphUtils
 
 rng = np.random.default_rng()
-nobs = 10000
+nobs = 30000
 eps = rng.normal(size=(nobs, 3))
-B = np.array([[0, 0, 0], [1, 0, 0], [1, 0, 0]])
+B = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0]])
 I = np.eye(3)
 Z = (np.linalg.inv(I - B.T) @ eps.T).T
 np.linalg.inv(np.cov(Z.T))

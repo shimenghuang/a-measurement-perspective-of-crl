@@ -510,32 +510,33 @@ for k, v in hz_dict.items():
 
 k = 0  # view 1
 l = 1  # view 2
-i = 5  # batch number
-subset = (0, 1)
-predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
-batch_size = hz_dict[k]["hz"][i].shape[0]
-# recovered Z from view 0
-z0_hat0 = np.take_along_axis(
-    hz_dict[k]["hz"][i],
-    np.tile(predicted_content_idx[None], (batch_size, 1)),
-    axis=-1,
-)
-# recovered Z from view 1
-z0_hat1 = np.take_along_axis(
-    hz_dict[l]["hz"][i],
-    np.tile(predicted_content_idx[None], (batch_size, 1)),
-    axis=-1,
-)
-z0_est = np.column_stack([z0_hat0, z0_hat1])
-file_path = os.path.join(args.save_dir, f"z0est_batch{i}.csv")
-np.savetxt(file_path, z0_est, delimiter=",")
+# i = 11  # batch number
+for i in range(args.num_eval_batches):
+    subset = (0, 1)
+    predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
+    batch_size = hz_dict[k]["hz"][i].shape[0]
+    # recovered Z from view 0
+    z0_hat0 = np.take_along_axis(
+        hz_dict[k]["hz"][i],
+        np.tile(predicted_content_idx[None], (batch_size, 1)),
+        axis=-1,
+    )
+    # recovered Z from view 1
+    z0_hat1 = np.take_along_axis(
+        hz_dict[l]["hz"][i],
+        np.tile(predicted_content_idx[None], (batch_size, 1)),
+        axis=-1,
+    )
+    z0_est = np.column_stack([z0_hat0, z0_hat1])
+    file_path = os.path.join(args.save_dir, f"z0est_batch{i}.csv")
+    np.savetxt(file_path, z0_est, delimiter=",")
 
-z0 = all_zs[i, :, 0][:, None]
-z1 = all_zs[i, :, 1][:, None]
-z2 = all_zs[i, :, 2][:, None]
-z_true = np.column_stack([z0, z1, z2])
-file_path = os.path.join(args.save_dir, f"ztrue_batch{i}.csv")
-np.savetxt(file_path, z_true, delimiter=",")
+    z0 = all_zs[i, :, 0][:, None]
+    z1 = all_zs[i, :, 1][:, None]
+    z2 = all_zs[i, :, 2][:, None]
+    z_true = np.column_stack([z0, z1, z2])
+    file_path = os.path.join(args.save_dir, f"ztrue_batch{i}.csv")
+    np.savetxt(file_path, z_true, delimiter=",")
 
 pcm = PCM()
 pcm.test(
@@ -613,7 +614,7 @@ for subset_idx, subset in enumerate(data_dict):
                     train_labels,
                     test_labels,
                 ) = train_test_split(
-                    inputs, labels
+                    labels, inputs
                 )  # train_test_split(inputs, labels)
                 data = [train_inputs, train_labels, test_inputs, test_labels]
                 r2_linear = evaluate_prediction(
@@ -630,7 +631,7 @@ for subset_idx, subset in enumerate(data_dict):
                 scores[latent_idx]["nonlinear"].append(r2_nonlinear)
         for latent_idx in range(args.latent_dim):
             file_path = os.path.join(
-                args.save_dir, f"{file_name}_input_to_label.csv"
+                args.save_dir, f"{file_name}_label_to_input.csv"
             )
             fileobj = open(file_path, "a+")
             writer = csv.writer(fileobj)
