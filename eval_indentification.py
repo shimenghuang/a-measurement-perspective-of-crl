@@ -7,6 +7,7 @@ from itertools import chain
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 from scipy.stats import wishart
 from sklearn import kernel_ridge, linear_model
@@ -540,6 +541,21 @@ for i in range(args.num_eval_batches):
     file_path = os.path.join(args.save_dir, f"ztrue_batch{i}.csv")
     np.savetxt(file_path, z_true, delimiter=",")
 
+## Load saved data and compare pycomets and comets in R ##
+
+exper_id = "five_latents"
+batch_num = 0
+df = pd.read_csv(
+    f"~/multiview-crl-eval/results/numerical/{exper_id}/ztrue_batch{batch_num}.csv",
+    header=None,
+)
+df_est = pd.read_csv(
+    f"~/multiview-crl-eval/results/numerical/{exper_id}/z0est_batch{batch_num}.csv",
+    header=None,
+)
+df_all = pd.concat([df, df_est], axis=1)
+df_all.columns = ["z0", "z1", "z2", "x", "y", "z0_est0", "z0_est1"]
+
 pcm = PCM()
 pcm.test(
     reg_yonxz=LM(),
@@ -547,9 +563,21 @@ pcm.test(
     reg_vonxz=LM(),
     reg_yhatonz=LM(),
     reg_yonz=LM(),
-    Y=z1,
-    X=z0_hat0,
-    Z=z0,
+    Y=df_all[["z0"]].to_numpy(),
+    X=df_all[["z0_est0"]].to_numpy(),
+    Z=df_all[["z1", "z2", "x", "y"]].to_numpy(),
+    estimate_variance=False,
+)
+
+pcm.test(
+    reg_yonxz=LM(),
+    reg_ronz=LM(),
+    reg_vonxz=LM(),
+    reg_yhatonz=LM(),
+    reg_yonz=LM(),
+    Y=df_all[["z1"]].to_numpy(),
+    X=df_all[["z0_est0"]].to_numpy(),
+    Z=df_all[["z0", "z2", "x", "y"]].to_numpy(),
     estimate_variance=False,
 )
 pcm.test(
@@ -558,11 +586,61 @@ pcm.test(
     reg_vonxz=LM(),
     reg_yhatonz=LM(),
     reg_yonz=LM(),
-    Y=z2,
-    X=z0_hat1,
-    Z=z0,
+    Y=df_all[["z2"]].to_numpy(),
+    X=df_all[["z0_est0"]].to_numpy(),
+    Z=df_all[["z0", "z1", "x", "y"]].to_numpy(),
     estimate_variance=False,
 )
+
+
+def tmex(df_all, alpha=0.05):
+    pcm = PCM()
+    pcm.test(
+        reg_yonxz=LM(),
+        reg_ronz=LM(),
+        reg_vonxz=LM(),
+        reg_yhatonz=LM(),
+        reg_yonz=LM(),
+        Y=df_all[["z0"]].to_numpy(),
+        X=df_all[["z0_est0"]].to_numpy(),
+        Z=df_all[["z1", "z2", "x", "y"]].to_numpy(),
+        estimate_variance=False,
+    )
+    pval1 = pcm.pval
+    pcm.test(
+        reg_yonxz=LM(),
+        reg_ronz=LM(),
+        reg_vonxz=LM(),
+        reg_yhatonz=LM(),
+        reg_yonz=LM(),
+        Y=df_all[["z1"]].to_numpy(),
+        X=df_all[["z0_est0"]].to_numpy(),
+        Z=df_all[["z0", "z2", "x", "y"]].to_numpy(),
+        estimate_variance=False,
+    )
+    pval2 = pcm.pval
+    pcm.test(
+        reg_yonxz=LM(),
+        reg_ronz=LM(),
+        reg_vonxz=LM(),
+        reg_yhatonz=LM(),
+        reg_yonz=LM(),
+        Y=df_all[["z2"]].to_numpy(),
+        X=df_all[["z0_est0"]].to_numpy(),
+        Z=df_all[["z0", "z1", "x", "y"]].to_numpy(),
+        estimate_variance=False,
+    )
+    pval3 = pcm.pval
+    score1 = int(pval1 < alpha) - 1
+    score2 = int(pval2 < alpha)
+    score3 = int(pval3 < alpha)
+    tmex_score = (score1 + score2 + score3) / 3
+    return tmex_score, pval1, pval2, pval3
+
+
+tmex(df_all, alpha=0.05)
+
+## OLD COLD below ##
 
 gcm = GCM()
 gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat0, X=z1, Z=z0)

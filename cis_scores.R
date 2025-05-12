@@ -11,7 +11,7 @@ options(ranger.num.threads = 8)
 
 # ---- load data from one experiment ----
 
-exper_id <- "five_latents_bad"
+exper_id <- "five_latents"
 batch_nums <- 0:49
 dat_ls <- lapply(batch_nums, \(batch_num) {
     z_true <- read.csv(paste0(
@@ -317,15 +317,15 @@ helper_pval_block <- function(learned_block, exper_id = NULL) {
 # ---- check results ----
 
 all_latents <- c("z0", "z1", "z2", "x", "y")
-bb <- 1L
+bb <- 0L
 learned_block <- "z0_est0"
 dat_batch <- dat %>%
     dplyr::filter(batch_num == bb)
 
 test_block_batch(
     dat_batch,
-    other_latents = "z2",
-    cond_latents = c("z0", "z1", "x", "y"),
+    other_latents = "z0",
+    cond_latents = c("z1", "z2", "x", "y"),
     learned_block = learned_block,
     method = "pcm",
     reg_mod = "lrm",
@@ -336,6 +336,16 @@ test_block_batch(
     dat_batch,
     other_latents = "z1",
     cond_latents = c("z0", "z2", "x", "y"),
+    learned_block = learned_block,
+    method = "pcm",
+    reg_mod = "lrm",
+    rep = 5
+)
+
+test_block_batch(
+    dat_batch,
+    other_latents = "z2",
+    cond_latents = c("z0", "z1", "x", "y"),
     learned_block = learned_block,
     method = "pcm",
     reg_mod = "lrm",
