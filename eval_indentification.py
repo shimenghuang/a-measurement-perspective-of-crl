@@ -605,6 +605,7 @@ def tmex(df_all, alpha=0.05):
         X=df_all[["z0_est0"]].to_numpy(),
         Z=df_all[["z1", "z2", "x", "y"]].to_numpy(),
         estimate_variance=False,
+        rep=5,
     )
     pval1 = pcm.pval
     pcm.test(
@@ -617,6 +618,7 @@ def tmex(df_all, alpha=0.05):
         X=df_all[["z0_est0"]].to_numpy(),
         Z=df_all[["z0", "z2", "x", "y"]].to_numpy(),
         estimate_variance=False,
+        rep=5,
     )
     pval2 = pcm.pval
     pcm.test(
@@ -629,6 +631,7 @@ def tmex(df_all, alpha=0.05):
         X=df_all[["z0_est0"]].to_numpy(),
         Z=df_all[["z0", "z1", "x", "y"]].to_numpy(),
         estimate_variance=False,
+        rep=5,
     )
     pval3 = pcm.pval
     score1 = int(pval1 < alpha) - 1
