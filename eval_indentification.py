@@ -468,7 +468,7 @@ device = "cpu"
 # else:
 #     device = "cpu"
 
-save_dir = "/nfs/scistore19/locatgrp/shuang/multiview-crl-eval/results/numerical/gumbel_softmax"
+save_dir = "/nfs/scistore19/locatgrp/shuang/multiview-crl-eval/results/numerical/five_latents"
 # model_path = os.path.join(save_dir, "model.pt")
 setting_path = os.path.join(save_dir, "settings.json")
 with open(setting_path, "r") as setting_path:
@@ -534,7 +534,9 @@ for i in range(args.num_eval_batches):
     z0 = all_zs[i, :, 0][:, None]
     z1 = all_zs[i, :, 1][:, None]
     z2 = all_zs[i, :, 2][:, None]
-    z_true = np.column_stack([z0, z1, z2])
+    x = all_zs[i, :, 3][:, None]
+    y = all_zs[i, :, 4][:, None]
+    z_true = np.column_stack([z0, z1, z2, x, y])
     file_path = os.path.join(args.save_dir, f"ztrue_batch{i}.csv")
     np.savetxt(file_path, z_true, delimiter=",")
 

@@ -181,6 +181,19 @@
       ],
       "Hash": "e1e1b9d75c37401117b636b7ae50827a"
     },
+    "beeswarm": {
+      "Package": "beeswarm",
+      "Version": "0.4.0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Hash": "0f4e9d8caa6feaa7e409ae6c30f2ca66"
+    },
     "boot": {
       "Package": "boot",
       "Version": "1.3-31",
@@ -307,9 +320,14 @@
     },
     "comets": {
       "Package": "comets",
-      "Version": "0.1-1",
-      "Source": "Repository",
-      "Repository": "RSPM",
+      "Version": "0.1-2",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "comets",
+      "RemoteUsername": "LucasKook",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "e2c04af2682995db53bcd154c7784488300eba05",
       "Requirements": [
         "Formula",
         "R",
@@ -318,7 +336,7 @@
         "ranger",
         "survival"
       ],
-      "Hash": "aad8f1a0dcaf0b167ea687935636ae05"
+      "Hash": "3ed90a127e938fc416f30e6ae9f64b2d"
     },
     "corrplot": {
       "Package": "corrplot",
@@ -464,6 +482,21 @@
         "methods"
       ],
       "Hash": "15e9634c0fcd294799e9b2e929ed1b86"
+    },
+    "ggbeeswarm": {
+      "Package": "ggbeeswarm",
+      "Version": "0.7.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "beeswarm",
+        "cli",
+        "ggplot2",
+        "lifecycle",
+        "vipor"
+      ],
+      "Hash": "899f28fe0388b7f687d7453429c2474d"
     },
     "ggplot2": {
       "Package": "ggplot2",
@@ -1283,6 +1316,18 @@
         "rlang"
       ],
       "Hash": "c03fa420630029418f7e6da3667aac4a"
+    },
+    "vipor": {
+      "Package": "vipor",
+      "Version": "0.4.7",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "graphics",
+        "stats"
+      ],
+      "Hash": "86493c62c14eb78140f1725003958a77"
     },
     "viridisLite": {
       "Package": "viridisLite",

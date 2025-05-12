@@ -25,7 +25,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 if torch.cuda.is_available():
-    device = "cuda:0"
+    device = "cuda:2"
 else:
     device = "cpu"
 
@@ -46,8 +46,8 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", type=str, default="results/numerical")
-    parser.add_argument("--model-id", type=str, default="gumbel_softmax")
-    parser.add_argument("--latent-dim", type=int, default=2)
+    parser.add_argument("--model-id", type=str, default="five_latents")
+    parser.add_argument("--latent-dim", type=int, default=5)
     parser.add_argument("--encoding-size", type=int, default=20)
     parser.add_argument("--evaluate", action="store_true")  # by default false
     parser.add_argument("--num-train-batches", type=int, default=5)
@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--no-cuda", action="store_true")
     parser.add_argument("--batch-size", type=int, default=4096)
     parser.add_argument("--n-log-steps", type=int, default=100)
-    parser.add_argument("--n-steps", type=int, default=50001)
+    parser.add_argument("--n-steps", type=int, default=50001)  # 50001
     parser.add_argument("--resume-training", action="store_false")
     parser.add_argument(
         "--n-views", type=int, default=2
@@ -69,13 +69,20 @@ def parse_args():
         "--S-k",
         type=int,
         help="view-specific latents",
-        default=[[0, 1], [0, 2]],
+        default=[[0, 1, 2], [0, 3, 4]],
     )
     parser.add_argument(
         # "--B", type=float, default=[[0, 1, 1], [0, 0, 0], [0, 0, 0]]
         "--B",
         type=float,
-        default=[[0, 0, 0], [1, 0, 0], [1, 1, 0]],
+        # default=[[0, 0, 0], [1, 0, 0], [1, 1, 0]],
+        default=[
+            [0, 0, 0, 0, 0],
+            [1, 0, 0, 0, 1],
+            [1, 1, 0, 0, 0],
+            [1, 0, 0, 0, 0],
+            [1, 0, 0, 1, 0],
+        ],
     )
     parser.add_argument("--grid-search-eval", action="store_true")
     parser.add_argument("--shared-mixing-function", type=bool, default=False)
@@ -88,7 +95,7 @@ def parse_args():
     )
     parser.add_argument("--subsets", default=None)
     parser.add_argument("--evaluate_individual_latents", action="store_true")
-    parser.add_argument("--n_dependent_dims", default=3, type=int)
+    parser.add_argument("--n_dependent_dims", default=5, type=int)
     args = parser.parse_args()
     return args, parser
 
