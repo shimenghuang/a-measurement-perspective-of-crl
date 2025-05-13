@@ -7,6 +7,8 @@ import os
 import random
 from itertools import chain
 from pathlib import Path
+import uuid                  # ← here
+
 
 import encoders
 import invertible_network_utils
@@ -24,8 +26,10 @@ from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
+from datetime import datetime
+
 if torch.cuda.is_available():
-    device = "cuda:9"
+    device = "cuda:0"
 else:
     device = "cpu"
 
@@ -46,7 +50,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", type=str, default="results/numerical")
-    parser.add_argument("--model-id", type=str, default="five_latents_tmp")
+    parser.add_argument("--model-id", type=str, default=None)
     parser.add_argument("--latent-dim", type=int, default=5)
     parser.add_argument("--encoding-size", type=int, default=20)
     parser.add_argument("--evaluate", action="store_true")  # by default false
@@ -780,6 +784,13 @@ def evaluate(models, latent_space, args):
 # ------------------------------------------
 def main():
     args, parser = parse_args()
+    if args.model_id is None:
+        slurm_id = os.getenv("SLURM_ARRAY_TASK_ID") or os.getenv("SLURM_JOB_ID")
+        if slurm_id:                               # launched via Slurm
+            args.model_id = f"run_{slurm_id}"
+        else:                                      # local run → timestamp+UUID4
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            args.model_id = f"run_{stamp}_{uuid.uuid4().hex[:4]}"
     args.save_dir = os.path.join(args.model_dir, args.model_id)
     os.makedirs(args.save_dir, exist_ok=True)
     with open(os.path.join(args.save_dir, "settings.json"), "w") as fp:
