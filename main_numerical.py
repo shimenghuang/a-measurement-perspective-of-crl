@@ -25,7 +25,7 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
 if torch.cuda.is_available():
-    device = "cuda:2"
+    device = "cuda:9"
 else:
     device = "cpu"
 
@@ -46,7 +46,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-dir", type=str, default="results/numerical")
-    parser.add_argument("--model-id", type=str, default="five_latents")
+    parser.add_argument("--model-id", type=str, default="five_latents_tmp")
     parser.add_argument("--latent-dim", type=int, default=5)
     parser.add_argument("--encoding-size", type=int, default=20)
     parser.add_argument("--evaluate", action="store_true")  # by default false

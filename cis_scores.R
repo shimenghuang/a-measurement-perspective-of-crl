@@ -33,6 +33,17 @@ dat_ls <- lapply(batch_nums, \(batch_num) {
 dat <- do.call(rbind, dat_ls)
 dat$batch_num <- as.integer(dat$batch_num)
 
+# # create a mixed representation of Z0
+# dat <- dat %>%
+#     dplyr::mutate(
+#         # z0_est0mix = z0_est0 + 0.1 * (z1 + 1)^2 - 0.1 * (z2 + 1)^2,
+#         # z0_est1mix = z0_est1 + 0.1 * (z1 + 1)^2 - 0.1 * (z2 + 1)^2
+#         z0_est0mix = z0_est0 + 0.01 * z1 - 0.01 * z2,
+#         z0_est1mix = z0_est1 + 0.01 * z1 - 0.01 * z2
+#     )
+
+head(dat)
+
 # ---- compute cis scores ----
 
 #' Perform tests for one batch.
@@ -314,175 +325,224 @@ helper_pval_block <- function(learned_block, exper_id = NULL) {
     rbind(pvals_block_cond01, pvals_block_cond02, pvals_block_cond12)
 }
 
-# ---- check results ----
+# # ---- check results ----
 
-all_latents <- c("z0", "z1", "z2", "x", "y")
-bb <- 0L
-learned_block <- "z0_est0"
-dat_batch <- dat %>%
-    dplyr::filter(batch_num == bb)
+# all_latents <- c("z0", "z1", "z2", "x", "y")
+# bb <- 0L
+# learned_block <- "z0_est0mix"
+# dat_batch <- dat %>%
+#     dplyr::filter(batch_num == bb)
 
-test_block_batch(
-    dat_batch,
-    other_latents = "z0",
-    cond_latents = c("z1", "z2", "x", "y"),
-    learned_block = learned_block,
-    method = "pcm",
-    reg_mod = "lrm",
-    rep = 5
-)
+# test_block_batch(
+#     dat_batch,
+#     other_latents = "z0",
+#     cond_latents = c("z1", "z2", "x", "y"),
+#     learned_block = learned_block,
+#     method = "pcm",
+#     reg_mod = "lrm",
+#     rep = 5
+# )
 
-test_block_batch(
-    dat_batch,
-    other_latents = "z1",
-    cond_latents = c("z0", "z2", "x", "y"),
-    learned_block = learned_block,
-    method = "pcm",
-    reg_mod = "lrm",
-    rep = 5
-)
+# test_block_batch(
+#     dat_batch,
+#     other_latents = "z1",
+#     cond_latents = c("z0", "z2", "x", "y"),
+#     learned_block = learned_block,
+#     method = "pcm",
+#     reg_mod = "lrm",
+#     rep = 5
+# )
 
-test_block_batch(
-    dat_batch,
-    other_latents = "z2",
-    cond_latents = c("z0", "z1", "x", "y"),
-    learned_block = learned_block,
-    method = "pcm",
-    reg_mod = "lrm",
-    rep = 5
-)
+# test_block_batch(
+#     dat_batch,
+#     other_latents = "z2",
+#     cond_latents = c("z0", "z1", "x", "y"),
+#     learned_block = learned_block,
+#     method = "pcm",
+#     reg_mod = "lrm",
+#     rep = 5
+# )
 
-r2_view_batch(
-    dat_batch = dat_batch,
-    all_latents = all_latents,
-    learned_block = "z0_est0"
-)
+# r2_view_batch(
+#     dat_batch = dat_batch,
+#     all_latents = all_latents,
+#     learned_block = "z0_est0"
+# )
 
-bmcc_view_batch(
-    dat_batch = dat_batch,
-    target_blocks = "z0",
-    learned_blocks = "z0_est0"
-)
+# bmcc_view_batch(
+#     dat_batch = dat_batch,
+#     target_blocks = "z0",
+#     learned_blocks = "z0_est0mix"
+# )
 
-bmcc_res0 <- comp_bmcc(
-    dat = dat,
-    batch_nums = batch_nums,
-    target_blocks = "z0",
-    learned_blocks = "z0_est1"
-)
-mean(bmcc_res0$bmcc)
-sd(bmcc_res0$bmcc)
+# bmcc_res0 <- comp_bmcc(
+#     dat = dat,
+#     batch_nums = batch_nums,
+#     target_blocks = "z0",
+#     learned_blocks = "z0_est1"
+# )
+# mean(bmcc_res0$bmcc)
+# sd(bmcc_res0$bmcc)
 
-bmcc_res1 <- comp_bmcc(
-    dat = dat,
-    batch_nums = batch_nums,
-    target_blocks = "z0",
-    learned_blocks = "z0_est1"
-)
-mean(bmcc_res1$bmcc)
-sd(bmcc_res1$bmcc)
+# bmcc_res1 <- comp_bmcc(
+#     dat = dat,
+#     batch_nums = batch_nums,
+#     target_blocks = "z0",
+#     learned_blocks = "z0_est1"
+# )
+# mean(bmcc_res1$bmcc)
+# sd(bmcc_res1$bmcc)
 
-pvals_block0 <- helper_pval_block(learned_block = "z0_est0")
-pvals_block1 <- helper_pval_block(learned_block = "z0_est1")
-pvals_df <- rbind(pvals_block0, pvals_block1)
+# pvals_block0 <- helper_pval_block(learned_block = "z0_est0")
+# pvals_block1 <- helper_pval_block(learned_block = "z0_est1")
+# pvals_df <- rbind(pvals_block0, pvals_block1)
 
-cis_res0 <- comp_cis_score(
-    pvals_df = pvals_df,
-    batch_nums = batch_nums,
-    learned_block = "z0_est0",
-    expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
-    return_mat = TRUE
-)
-cis_res0$est
-cis_res0$sd
+# cis_res0 <- comp_cis_score(
+#     pvals_df = pvals_df,
+#     batch_nums = batch_nums,
+#     learned_block = "z0_est0",
+#     expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
+#     return_mat = TRUE
+# )
+# cis_res0$est
+# cis_res0$sd
 
-cis_res1 <- comp_cis_score(
-    pvals_df = pvals_df,
-    batch_nums = batch_nums,
-    learned_block = "z0_est1",
-    expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
-    return_mat = TRUE
-)
-cis_res1$est
-cis_res1$sd
+# cis_res1 <- comp_cis_score(
+#     pvals_df = pvals_df,
+#     batch_nums = batch_nums,
+#     learned_block = "z0_est1",
+#     expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
+#     return_mat = TRUE
+# )
+# cis_res1$est
+# cis_res1$sd
 
-agg_jpeg(
-    paste0(
-        "results/numerical/", exper_id, "/simu_pvals.jpg"
-    ),
-    width = 10, height = 5,
-    units = "in", res = 300
-)
+# agg_jpeg(
+#     paste0(
+#         "results/numerical/", exper_id, "/simu_pvals.jpg"
+#     ),
+#     width = 10, height = 5,
+#     units = "in", res = 300
+# )
 
-pvals_df %>%
-    ggplot2::ggplot(aes(
-        x = cond_latents,
-        y = pval,
-        color = learned_block,
-        group = interaction(learned_block, cond_latents)
-    )) +
-    geom_boxplot(width = 0.15, alpha = 0, position = position_dodge(0.5)) +
-    ggbeeswarm::geom_quasirandom(width = 0.1, dodge.width = 0.5) +
-    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
-    # scale_y_log10() +
-    theme_bw()
+# pvals_df %>%
+#     ggplot2::ggplot(aes(
+#         x = cond_latents,
+#         y = pval,
+#         color = learned_block,
+#         group = interaction(learned_block, cond_latents)
+#     )) +
+#     geom_boxplot(width = 0.15, alpha = 0, position = position_dodge(0.5)) +
+#     ggbeeswarm::geom_quasirandom(width = 0.1, dodge.width = 0.5) +
+#     geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+#     # scale_y_log10() +
+#     theme_bw()
 
-dev.off()
+# dev.off()
 
-r2_df0 <- comp_r2(
-    dat = dat,
-    batch_nums = batch_nums,
-    all_latents = all_latents,
-    learned_block = "z0_est0"
-)
-r2_df0$view <- 0
+# # check the mixed representation
+# pvals_block0mix <- helper_pval_block(learned_block = "z0_est0mix")
+# pvals_block1mix <- helper_pval_block(learned_block = "z0_est1mix")
+# pvals_df_mix <- rbind(pvals_block0mix, pvals_block1mix)
 
-r2_df1 <- comp_r2(
-    dat = dat,
-    batch_nums = batch_nums,
-    all_latents = all_latents,
-    learned_block = "z0_est1"
-)
-r2_df1$view <- 1
+# cis_res0mix <- comp_cis_score(
+#     pvals_df = pvals_df_mix,
+#     batch_nums = batch_nums,
+#     learned_block = "z0_est0mix",
+#     expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
+#     return_mat = TRUE
+# )
+# cis_res0mix$est
+# cis_res0mix$sd
 
-r2_df <- rbind(r2_df0, r2_df1)
+# cis_res1mix <- comp_cis_score(
+#     pvals_df = pvals_df_mix,
+#     batch_nums = batch_nums,
+#     learned_block = "z0_est1mix",
+#     expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
+#     return_mat = TRUE
+# )
+# cis_res1mix$est
+# cis_res1mix$sd
 
-r2_df %>%
-    dplyr::filter((checked_latent != "x") &
-        (checked_latent != "y")) %>%
-    dplyr::group_by(view, checked_latent) %>%
-    dplyr::summarise(
-        avg_r2 = mean(r2),
-        sd_r2 = sd(r2),
-        num_total = n()
-    )
+# agg_jpeg(
+#     paste0(
+#         "results/numerical/", exper_id, "/simu_pvals_mixed.jpg"
+#     ),
+#     width = 10, height = 5,
+#     units = "in", res = 300
+# )
 
-agg_jpeg(
-    paste0(
-        "results/numerical/", exper_id, "/simu_r2s.jpg"
-    ),
-    width = 10, height = 10,
-    units = "in", res = 300
-)
+# pvals_df_mix %>%
+#     ggplot2::ggplot(aes(
+#         x = cond_latents,
+#         y = pval,
+#         color = learned_block,
+#         group = interaction(learned_block, cond_latents)
+#     )) +
+#     geom_boxplot(width = 0.15, alpha = 0, position = position_dodge(0.5)) +
+#     ggbeeswarm::geom_quasirandom(width = 0.1, dodge.width = 0.5) +
+#     geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+#     # scale_y_log10() +
+#     theme_bw()
 
-r2_df %>%
-    dplyr::filter((checked_latent != "x") &
-        (checked_latent != "y")) %>%
-    dplyr::mutate(view = as.factor(view)) %>%
-    ggplot2::ggplot(aes(
-        x = view, y = r2,
-        group = interaction(view, checked_latent),
-        color = checked_latent
-    )) +
-    geom_boxplot(width = 0.15, alpha = 0, position = position_dodge(0.5)) +
-    ggbeeswarm::geom_quasirandom(width = 0.1, dodge.width = 0.5) +
-    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
-    theme_bw()
+# dev.off()
 
-dev.off()
+# r2_df0 <- comp_r2(
+#     dat = dat,
+#     batch_nums = batch_nums,
+#     all_latents = all_latents,
+#     learned_block = "z0_est0mix"
+# )
+# r2_df0$view <- 0
 
-# ---- compare two experiments ----
+# r2_df1 <- comp_r2(
+#     dat = dat,
+#     batch_nums = batch_nums,
+#     all_latents = all_latents,
+#     learned_block = "z0_est1mix"
+# )
+# r2_df1$view <- 1
 
+# r2_df <- rbind(r2_df0, r2_df1)
+
+# r2_df %>%
+#     dplyr::filter((checked_latent != "x") &
+#         (checked_latent != "y")) %>%
+#     dplyr::group_by(view, checked_latent) %>%
+#     dplyr::summarise(
+#         avg_r2 = mean(r2),
+#         sd_r2 = sd(r2),
+#         num_total = n()
+#     )
+
+# agg_jpeg(
+#     paste0(
+#         "results/numerical/", exper_id, "/simu_r2s.jpg"
+#     ),
+#     width = 10, height = 10,
+#     units = "in", res = 300
+# )
+
+# r2_df %>%
+#     dplyr::filter((checked_latent != "x") &
+#         (checked_latent != "y")) %>%
+#     dplyr::mutate(view = as.factor(view)) %>%
+#     ggplot2::ggplot(aes(
+#         x = view, y = r2,
+#         group = interaction(view, checked_latent),
+#         color = checked_latent
+#     )) +
+#     geom_boxplot(width = 0.15, alpha = 0, position = position_dodge(0.5)) +
+#     ggbeeswarm::geom_quasirandom(width = 0.1, dodge.width = 0.5) +
+#     geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+#     theme_bw()
+
+# dev.off()
+
+# ---- compare three models ----
+
+set.seed(123)
 exper_id <- "five_latents"
 batch_nums <- 0:49
 dat_ls <- lapply(batch_nums, \(batch_num) {
@@ -529,8 +589,15 @@ dat_bad <- do.call(rbind, dat_ls)
 dat_bad$batch_num <- as.integer(dat_bad$batch_num)
 dat_bad$exper_id <- "five_latents_bad"
 
+dat_mix <- dat_good %>%
+    dplyr::mutate(
+        z0_est0 = z0_est0 + 0.2 * z1 - 0.1 * z2,
+        z0_est1 = z0_est1 + 0.2 * z1 - 0.1 * z2
+    )
+dat_mix$exper_id <- "five_latents_mix"
+
 # combine the two datasets
-dat <- rbind(dat_good, dat_bad)
+dat <- rbind(dat_good, dat_bad, dat_mix)
 
 write.csv(
     dat,
@@ -543,11 +610,16 @@ write.csv(
 # compute p-values for both datasets
 pvals_block_good <- helper_pval_block(learned_block = "z0_est0", exper_id = "five_latents")
 pvals_block_bad <- helper_pval_block(learned_block = "z0_est0", exper_id = "five_latents_bad")
-pvals_block_good$exper_id <- "five_latents"
+pvals_block_mix <- helper_pval_block(learned_block = "z0_est0", exper_id = "five_latents_mix")
+pvals_block_good$exper_id <- "five_latents_good"
 pvals_block_bad$exper_id <- "five_latents_bad"
-pvals_df <- rbind(pvals_block_good, pvals_block_bad)
+pvals_block_mix$exper_id <- "five_latents_mix"
+pvals_df <- rbind(pvals_block_good, pvals_block_bad, pvals_block_mix)
 pvals_df$cond_latents <- factor(pvals_df$cond_latents,
     levels = c("z1_z2_x_y", "z0_z2_x_y", "z0_z1_x_y")
+)
+pvals_df$exper_id <- factor(pvals_df$exper_id,
+    levels = c("five_latents_good", "five_latents_bad", "five_latents_mix")
 )
 
 write.csv(
@@ -576,7 +648,11 @@ pvals_df %>%
     geom_boxplot(width = 0.3, alpha = 0, position = position_dodge(0.5)) +
     ggbeeswarm::geom_quasirandom(width = 0.1, dodge.width = 0.5) +
     geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
-    scale_color_discrete(labels = c("Sufficient", "Insufficient")) +
+    # scale_color_discrete(labels = c(
+    #     "Suff. trained",
+    #     "Insuff. trained",
+    #     "Suff. but mixed"
+    # )) +
     scale_x_discrete(labels = c(
         expression(Z[1]),
         expression(Z[2]),
@@ -593,16 +669,175 @@ pvals_df %>%
 
 dev.off()
 
-# compute bias of the ATE estimates
+## ---- T-MEX scores ----
+
+cis_good <- comp_cis_score(
+    pvals_df = pvals_df %>%
+        dplyr::filter(exper_id == "five_latents_good"),
+    batch_nums = batch_nums,
+    learned_block = "z0_est0",
+    expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
+    return_mat = TRUE
+)
+cis_good$est
+cis_good$sd
+
+cis_bad <- comp_cis_score(
+    pvals_df = pvals_df %>%
+        dplyr::filter(exper_id == "five_latents_bad"),
+    batch_nums = batch_nums,
+    learned_block = "z0_est0",
+    expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
+    return_mat = TRUE
+)
+cis_bad$est
+cis_bad$sd
+
+cis_mix <- comp_cis_score(
+    pvals_df = pvals_df %>%
+        dplyr::filter(exper_id == "five_latents_mix"),
+    batch_nums = batch_nums,
+    learned_block = "z0_est0",
+    expected_adj_mat = matrix(c(1, 0, 0), nrow = 1),
+    return_mat = TRUE
+)
+cis_mix$est
+cis_mix$sd
+
+cis_tbl <- data.frame(
+    training = c("sufficient", "insufficient", "suffmixed"),
+    cis = c(cis_good$est, cis_bad$est, cis_mix$est),
+    sd = c(cis_good$sd, cis_bad$sd, cis_mix$sd)
+)
+
+write.csv(
+    cis_tbl,
+    file = paste0(
+        "results/numerical/", exper_id, "/simu_cis.csv"
+    ),
+    row.names = FALSE
+)
+
+## ---- BMCC scores ----
+bmcc_res0_good <- comp_bmcc(
+    dat = dat %>%
+        dplyr::filter(exper_id == "five_latents"),
+    batch_nums = batch_nums,
+    target_blocks = "z0",
+    learned_blocks = "z0_est0"
+)
+mean(bmcc_res0_good$bmcc)
+sd(bmcc_res0_good$bmcc)
+
+bmcc_res0_bad <- comp_bmcc(
+    dat = dat %>%
+        dplyr::filter(exper_id == "five_latents_bad"),
+    batch_nums = batch_nums,
+    target_blocks = "z0",
+    learned_blocks = "z0_est0"
+)
+mean(bmcc_res0_bad$bmcc)
+sd(bmcc_res0_bad$bmcc)
+
+bmcc_res0_mix <- comp_bmcc(
+    dat = dat %>%
+        dplyr::filter(exper_id == "five_latents_mix"),
+    batch_nums = batch_nums,
+    target_blocks = "z0",
+    learned_blocks = "z0_est0"
+)
+mean(bmcc_res0_mix$bmcc)
+sd(bmcc_res0_mix$bmcc)
+
+bmcc_tbl <- data.frame(
+    training = c("sufficient", "insufficient", "suffmixed"),
+    bmcc = c(
+        mean(bmcc_res0_good$bmcc),
+        mean(bmcc_res0_bad$bmcc),
+        mean(bmcc_res0_mix$bmcc)
+    ),
+    sd = c(sd(bmcc_res0_good$bmcc), sd(bmcc_res0_bad$bmcc), sd(bmcc_res0_mix$bmcc))
+)
+write.csv(
+    bmcc_tbl,
+    file = paste0(
+        "results/numerical/", exper_id, "/simu_bmcc.csv"
+    ),
+    row.names = FALSE
+)
+
+# ---- R2 ----
+r2_df0_good <- comp_r2(
+    dat = dat %>%
+        dplyr::filter(exper_id == "five_latents"),
+    batch_nums = batch_nums,
+    all_latents = c("z0", "z1", "z2"),
+    learned_block = "z0_est0"
+)
+r2_df0_good$view <- 0
+r2_df0_good <- r2_df0_good %>%
+    dplyr::group_by(checked_latent, view) %>%
+    dplyr::summarise(mean_r2 = mean(r2), sd_r2 = sd(r2))
+
+r2_df0_bad <- comp_r2(
+    dat = dat %>%
+        dplyr::filter(exper_id == "five_latents_bad"),
+    batch_nums = batch_nums,
+    all_latents = c("z0", "z1", "z2"),
+    learned_block = "z0_est0"
+)
+r2_df0_bad$view <- 0
+r2_df0_bad <- r2_df0_bad %>%
+    dplyr::group_by(checked_latent, view) %>%
+    dplyr::summarise(mean_r2 = mean(r2), sd_r2 = sd(r2))
+
+r2_df0_mix <- comp_r2(
+    dat = dat %>%
+        dplyr::filter(exper_id == "five_latents_mix"),
+    batch_nums = batch_nums,
+    all_latents = c("z0", "z1", "z2"),
+    learned_block = "z0_est0"
+)
+r2_df0_mix$view <- 0
+r2_df0_mix <- r2_df0_mix %>%
+    dplyr::group_by(checked_latent, view) %>%
+    dplyr::summarise(mean_r2 = mean(r2), sd_r2 = sd(r2))
+
+r2_tbl <- data.frame(
+    training = c(rep("sufficient", 3), rep("insufficient", 3), rep("suffmixed", 3)),
+    latent_var = c("z0", "z1", "z2"),
+    r2 = c(
+        r2_df0_good$mean_r2,
+        r2_df0_bad$mean_r2,
+        r2_df0_mix$mean_r2
+    ),
+    sd = c(
+        r2_df0_good$sd_r2,
+        r2_df0_bad$sd_r2,
+        r2_df0_mix$sd_r2
+    )
+)
+
+write.csv(
+    r2_tbl,
+    file = paste0(
+        "results/numerical/", exper_id, "/simu_r2.csv"
+    ),
+    row.names = FALSE
+)
+
+# ---- compute bias of the ATE estimates ----
 beta_est <- lapply(batch_nums, \(batch_num) {
     # beta_oracle <- coef(lm(y ~ z0 + x, data = dat_good[dat$batch_num == batch_num, ]))[3]
     beta_good <- coef(lm(y ~ z0_est0 + x, data = dat_good[dat_good$batch_num == batch_num, ]))[3]
     beta_bad <- coef(lm(y ~ z0_est0 + x, data = dat_bad[dat_bad$batch_num == batch_num, ]))[3]
+    beta_mix <- coef(lm(y ~ z0_est0 + x, data = dat_mix[dat_mix$batch_num == batch_num, ]))[3]
     data.frame(
         batch_num = batch_num,
         # beta_oracle = beta_oracle,
         sufficient = beta_good,
-        insufficient = beta_bad
+        insufficient = beta_bad,
+        suffmixed = beta_mix
     )
 })
 beta_est_df <- do.call(rbind, beta_est)
@@ -626,12 +861,12 @@ agg_jpeg(
 
 beta_est_df %>%
     tidyr::pivot_longer(
-        cols = c("sufficient", "insufficient"),
+        cols = c("sufficient", "insufficient", "suffmixed"),
         names_to = "training",
         values_to = "beta_est"
     ) %>%
     dplyr::mutate(training = factor(training,
-        levels = c("sufficient", "insufficient")
+        levels = c("sufficient", "insufficient", "suffmixed"),
     )) %>%
     ggplot2::ggplot(aes(
         x = training,

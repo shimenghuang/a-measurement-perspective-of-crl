@@ -261,6 +261,7 @@ def init_or_load_mixing_fns(device, args):
     """
     # Invertible MLP requires the same input and the same output size
     # extend to multi-view case
+    print(f"device: {device}")
     F = (
         torch.nn.ModuleList()
     )  # set of mixing functions, not trainable after generated.
@@ -275,7 +276,8 @@ def init_or_load_mixing_fns(device, args):
     if args.evaluate:
         F = torch.nn.ModuleList()
         mixing_fn_state_dict = torch.load(
-            os.path.join(args.save_dir, "mixing_fns.pt")
+            os.path.join(args.save_dir, "mixing_fns.pt"),
+            map_location=torch.device("cpu"),
         )
         for i, param_dict in mixing_fn_state_dict.items():
             f_i = construct_invertible_mlp(
@@ -328,7 +330,7 @@ def init_or_load_encoder_models(device, args, encoding_size=None):
         G = torch.nn.ModuleList()
 
         save_path = os.path.join(args.save_dir, "model.pt")
-        ckpt = torch.load(save_path)
+        ckpt = torch.load(save_path, map_location=torch.device("cpu"))
 
         for i in range(args.n_views):
             g_i = get_mlp(
@@ -511,6 +513,7 @@ for k, v in hz_dict.items():
 
 k = 0  # view 1
 l = 1  # view 2
+save_path = args.save_dir
 # i = 11  # batch number
 for i in range(args.num_eval_batches):
     subset = (0, 1)
@@ -529,7 +532,7 @@ for i in range(args.num_eval_batches):
         axis=-1,
     )
     z0_est = np.column_stack([z0_hat0, z0_hat1])
-    file_path = os.path.join(args.save_dir, f"z0est_batch{i}.csv")
+    file_path = os.path.join(save_path, f"z0est_batch{i}.csv")
     np.savetxt(file_path, z0_est, delimiter=",")
 
     z0 = all_zs[i, :, 0][:, None]
@@ -538,196 +541,196 @@ for i in range(args.num_eval_batches):
     x = all_zs[i, :, 3][:, None]
     y = all_zs[i, :, 4][:, None]
     z_true = np.column_stack([z0, z1, z2, x, y])
-    file_path = os.path.join(args.save_dir, f"ztrue_batch{i}.csv")
+    file_path = os.path.join(save_path, f"ztrue_batch{i}.csv")
     np.savetxt(file_path, z_true, delimiter=",")
 
-## Load saved data and compare pycomets and comets in R ##
+# ## Load saved data and compare pycomets and comets in R ##
 
-exper_id = "five_latents"
-batch_num = 0
-df = pd.read_csv(
-    f"~/multiview-crl-eval/results/numerical/{exper_id}/ztrue_batch{batch_num}.csv",
-    header=None,
-)
-df_est = pd.read_csv(
-    f"~/multiview-crl-eval/results/numerical/{exper_id}/z0est_batch{batch_num}.csv",
-    header=None,
-)
-df_all = pd.concat([df, df_est], axis=1)
-df_all.columns = ["z0", "z1", "z2", "x", "y", "z0_est0", "z0_est1"]
+# exper_id = "five_latents"
+# batch_num = 0
+# df = pd.read_csv(
+#     f"~/multiview-crl-eval/results/numerical/{exper_id}/ztrue_batch{batch_num}.csv",
+#     header=None,
+# )
+# df_est = pd.read_csv(
+#     f"~/multiview-crl-eval/results/numerical/{exper_id}/z0est_batch{batch_num}.csv",
+#     header=None,
+# )
+# df_all = pd.concat([df, df_est], axis=1)
+# df_all.columns = ["z0", "z1", "z2", "x", "y", "z0_est0", "z0_est1"]
 
-pcm = PCM()
-pcm.test(
-    reg_yonxz=LM(),
-    reg_ronz=LM(),
-    reg_vonxz=LM(),
-    reg_yhatonz=LM(),
-    reg_yonz=LM(),
-    Y=df_all[["z0"]].to_numpy(),
-    X=df_all[["z0_est0"]].to_numpy(),
-    Z=df_all[["z1", "z2", "x", "y"]].to_numpy(),
-    estimate_variance=False,
-)
+# pcm = PCM()
+# pcm.test(
+#     reg_yonxz=LM(),
+#     reg_ronz=LM(),
+#     reg_vonxz=LM(),
+#     reg_yhatonz=LM(),
+#     reg_yonz=LM(),
+#     Y=df_all[["z0"]].to_numpy(),
+#     X=df_all[["z0_est0"]].to_numpy(),
+#     Z=df_all[["z1", "z2", "x", "y"]].to_numpy(),
+#     estimate_variance=False,
+# )
 
-pcm.test(
-    reg_yonxz=LM(),
-    reg_ronz=LM(),
-    reg_vonxz=LM(),
-    reg_yhatonz=LM(),
-    reg_yonz=LM(),
-    Y=df_all[["z1"]].to_numpy(),
-    X=df_all[["z0_est0"]].to_numpy(),
-    Z=df_all[["z0", "z2", "x", "y"]].to_numpy(),
-    estimate_variance=False,
-)
-pcm.test(
-    reg_yonxz=LM(),
-    reg_ronz=LM(),
-    reg_vonxz=LM(),
-    reg_yhatonz=LM(),
-    reg_yonz=LM(),
-    Y=df_all[["z2"]].to_numpy(),
-    X=df_all[["z0_est0"]].to_numpy(),
-    Z=df_all[["z0", "z1", "x", "y"]].to_numpy(),
-    estimate_variance=False,
-)
-
-
-def tmex(df_all, alpha=0.05):
-    pcm = PCM()
-    pcm.test(
-        reg_yonxz=LM(),
-        reg_ronz=LM(),
-        reg_vonxz=LM(),
-        reg_yhatonz=LM(),
-        reg_yonz=LM(),
-        Y=df_all[["z0"]].to_numpy(),
-        X=df_all[["z0_est0"]].to_numpy(),
-        Z=df_all[["z1", "z2", "x", "y"]].to_numpy(),
-        estimate_variance=False,
-        rep=5,
-    )
-    pval1 = pcm.pval
-    pcm.test(
-        reg_yonxz=LM(),
-        reg_ronz=LM(),
-        reg_vonxz=LM(),
-        reg_yhatonz=LM(),
-        reg_yonz=LM(),
-        Y=df_all[["z1"]].to_numpy(),
-        X=df_all[["z0_est0"]].to_numpy(),
-        Z=df_all[["z0", "z2", "x", "y"]].to_numpy(),
-        estimate_variance=False,
-        rep=5,
-    )
-    pval2 = pcm.pval
-    pcm.test(
-        reg_yonxz=LM(),
-        reg_ronz=LM(),
-        reg_vonxz=LM(),
-        reg_yhatonz=LM(),
-        reg_yonz=LM(),
-        Y=df_all[["z2"]].to_numpy(),
-        X=df_all[["z0_est0"]].to_numpy(),
-        Z=df_all[["z0", "z1", "x", "y"]].to_numpy(),
-        estimate_variance=False,
-        rep=5,
-    )
-    pval3 = pcm.pval
-    score1 = int(pval1 < alpha) - 1
-    score2 = int(pval2 < alpha)
-    score3 = int(pval3 < alpha)
-    tmex_score = (score1 + score2 + score3) / 3
-    return tmex_score, pval1, pval2, pval3
+# pcm.test(
+#     reg_yonxz=LM(),
+#     reg_ronz=LM(),
+#     reg_vonxz=LM(),
+#     reg_yhatonz=LM(),
+#     reg_yonz=LM(),
+#     Y=df_all[["z1"]].to_numpy(),
+#     X=df_all[["z0_est0"]].to_numpy(),
+#     Z=df_all[["z0", "z2", "x", "y"]].to_numpy(),
+#     estimate_variance=False,
+# )
+# pcm.test(
+#     reg_yonxz=LM(),
+#     reg_ronz=LM(),
+#     reg_vonxz=LM(),
+#     reg_yhatonz=LM(),
+#     reg_yonz=LM(),
+#     Y=df_all[["z2"]].to_numpy(),
+#     X=df_all[["z0_est0"]].to_numpy(),
+#     Z=df_all[["z0", "z1", "x", "y"]].to_numpy(),
+#     estimate_variance=False,
+# )
 
 
-tmex(df_all, alpha=0.05)
+# def tmex(df_all, alpha=0.05):
+#     pcm = PCM()
+#     pcm.test(
+#         reg_yonxz=LM(),
+#         reg_ronz=LM(),
+#         reg_vonxz=LM(),
+#         reg_yhatonz=LM(),
+#         reg_yonz=LM(),
+#         Y=df_all[["z0"]].to_numpy(),
+#         X=df_all[["z0_est0"]].to_numpy(),
+#         Z=df_all[["z1", "z2", "x", "y"]].to_numpy(),
+#         estimate_variance=False,
+#         rep=5,
+#     )
+#     pval1 = pcm.pval
+#     pcm.test(
+#         reg_yonxz=LM(),
+#         reg_ronz=LM(),
+#         reg_vonxz=LM(),
+#         reg_yhatonz=LM(),
+#         reg_yonz=LM(),
+#         Y=df_all[["z1"]].to_numpy(),
+#         X=df_all[["z0_est0"]].to_numpy(),
+#         Z=df_all[["z0", "z2", "x", "y"]].to_numpy(),
+#         estimate_variance=False,
+#         rep=5,
+#     )
+#     pval2 = pcm.pval
+#     pcm.test(
+#         reg_yonxz=LM(),
+#         reg_ronz=LM(),
+#         reg_vonxz=LM(),
+#         reg_yhatonz=LM(),
+#         reg_yonz=LM(),
+#         Y=df_all[["z2"]].to_numpy(),
+#         X=df_all[["z0_est0"]].to_numpy(),
+#         Z=df_all[["z0", "z1", "x", "y"]].to_numpy(),
+#         estimate_variance=False,
+#         rep=5,
+#     )
+#     pval3 = pcm.pval
+#     score1 = int(pval1 < alpha) - 1
+#     score2 = int(pval2 < alpha)
+#     score3 = int(pval3 < alpha)
+#     tmex_score = (score1 + score2 + score3) / 3
+#     return tmex_score, pval1, pval2, pval3
 
-## OLD COLD below ##
 
-gcm = GCM()
-gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat0, X=z1, Z=z0)
-print(f'gcm resid cor view 0: {gcm.get_cor(type="pearson")}')
-plt.cla()
-plt.scatter(gcm.rX, gcm.rY)
-plt.savefig("tmp_gcm0.jpeg")
+# tmex(df_all, alpha=0.05)
 
-gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat1, X=z2, Z=z0)
-print(f'gcm resid cor view 1: {gcm.get_cor(type="pearson")}')
-plt.cla()
-plt.scatter(gcm.rX, gcm.rY)
-plt.savefig("tmp_gcm1.jpeg")
+# ## OLD COLD below ##
 
-gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat0, X=z2, Z=z0)
-print(gcm.get_cor(type="pearson"))
-plt.cla()
-plt.scatter(gcm.rX, gcm.rY)
-plt.savefig("tmp.jpeg")
+# gcm = GCM()
+# gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat0, X=z1, Z=z0)
+# print(f'gcm resid cor view 0: {gcm.get_cor(type="pearson")}')
+# plt.cla()
+# plt.scatter(gcm.rX, gcm.rY)
+# plt.savefig("tmp_gcm0.jpeg")
 
-gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat1, X=z1, Z=z0)
-print(gcm.get_cor(type="pearson"))
-plt.cla()
-plt.scatter(gcm.rX, gcm.rY)
-plt.savefig("tmp.jpeg")
+# gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat1, X=z2, Z=z0)
+# print(f'gcm resid cor view 1: {gcm.get_cor(type="pearson")}')
+# plt.cla()
+# plt.scatter(gcm.rX, gcm.rY)
+# plt.savefig("tmp_gcm1.jpeg")
 
-# (this run through all batches and compute the mean and std of the scores)
-# predict individual latents from the estimated content block
-for subset_idx, subset in enumerate(data_dict):
-    scores = {
-        latent_idx: {"linear": [], "nonlinear": []}
-        for latent_idx in range(args.latent_dim)
-    }
-    for k in subset:
-        for i in range(num_batches):
-            predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
-            batch_size = hz_dict[k]["hz"][i].shape[0]
-            inputs = np.take_along_axis(
-                hz_dict[k]["hz"][i],
-                np.tile(predicted_content_idx[None], (batch_size, 1)),
-                axis=-1,
-            )
-            for latent_idx in range(args.latent_dim):
-                # labels = StandardScaler().fit_transform(data_dict[subset][k][keyword])
-                labels = all_zs[i, :, latent_idx][
-                    :, None
-                ]  # [batch_size, n_keyword]
-                (
-                    train_inputs,
-                    test_inputs,
-                    train_labels,
-                    test_labels,
-                ) = train_test_split(
-                    labels, inputs
-                )  # train_test_split(inputs, labels)
-                data = [train_inputs, train_labels, test_inputs, test_labels]
-                r2_linear = evaluate_prediction(
-                    linear_model.LinearRegression(n_jobs=-1), r2_score, *data
-                )
-                if args.evaluate:
-                    # nonlinear regression
-                    r2_nonlinear = evaluate_prediction(
-                        generate_nonlinear_model(), r2_score, *data
-                    )
-                else:
-                    r2_nonlinear = -1.0  # not computed
-                scores[latent_idx]["linear"].append(r2_linear)
-                scores[latent_idx]["nonlinear"].append(r2_nonlinear)
-        for latent_idx in range(args.latent_dim):
-            file_path = os.path.join(
-                args.save_dir, f"{file_name}_label_to_input.csv"
-            )
-            fileobj = open(file_path, "a+")
-            writer = csv.writer(fileobj)
-            wri = [
-                subset,
-                "view",
-                k,
-                "latent_idx",
-                latent_idx,
-                "linear mean",
-                f"{np.mean(scores[latent_idx]['linear']):.3f} +- {np.std(scores[latent_idx]['linear']) :.3f}",
-                "nonlinear mean",
-                f"{np.mean(scores[latent_idx]['nonlinear']):.3f} +- {np.std(scores[latent_idx]['nonlinear']):.3f}",
-            ]
-            writer.writerow(wri)
-            fileobj.close()
+# gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat0, X=z2, Z=z0)
+# print(gcm.get_cor(type="pearson"))
+# plt.cla()
+# plt.scatter(gcm.rX, gcm.rY)
+# plt.savefig("tmp.jpeg")
+
+# gcm.test(reg_yz=LM(), reg_xz=LM(), Y=z0_hat1, X=z1, Z=z0)
+# print(gcm.get_cor(type="pearson"))
+# plt.cla()
+# plt.scatter(gcm.rX, gcm.rY)
+# plt.savefig("tmp.jpeg")
+
+# # (this run through all batches and compute the mean and std of the scores)
+# # predict individual latents from the estimated content block
+# for subset_idx, subset in enumerate(data_dict):
+#     scores = {
+#         latent_idx: {"linear": [], "nonlinear": []}
+#         for latent_idx in range(args.latent_dim)
+#     }
+#     for k in subset:
+#         for i in range(num_batches):
+#             predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
+#             batch_size = hz_dict[k]["hz"][i].shape[0]
+#             inputs = np.take_along_axis(
+#                 hz_dict[k]["hz"][i],
+#                 np.tile(predicted_content_idx[None], (batch_size, 1)),
+#                 axis=-1,
+#             )
+#             for latent_idx in range(args.latent_dim):
+#                 # labels = StandardScaler().fit_transform(data_dict[subset][k][keyword])
+#                 labels = all_zs[i, :, latent_idx][
+#                     :, None
+#                 ]  # [batch_size, n_keyword]
+#                 (
+#                     train_inputs,
+#                     test_inputs,
+#                     train_labels,
+#                     test_labels,
+#                 ) = train_test_split(
+#                     labels, inputs
+#                 )  # train_test_split(inputs, labels)
+#                 data = [train_inputs, train_labels, test_inputs, test_labels]
+#                 r2_linear = evaluate_prediction(
+#                     linear_model.LinearRegression(n_jobs=-1), r2_score, *data
+#                 )
+#                 if args.evaluate:
+#                     # nonlinear regression
+#                     r2_nonlinear = evaluate_prediction(
+#                         generate_nonlinear_model(), r2_score, *data
+#                     )
+#                 else:
+#                     r2_nonlinear = -1.0  # not computed
+#                 scores[latent_idx]["linear"].append(r2_linear)
+#                 scores[latent_idx]["nonlinear"].append(r2_nonlinear)
+#         for latent_idx in range(args.latent_dim):
+#             file_path = os.path.join(
+#                 args.save_dir, f"{file_name}_label_to_input.csv"
+#             )
+#             fileobj = open(file_path, "a+")
+#             writer = csv.writer(fileobj)
+#             wri = [
+#                 subset,
+#                 "view",
+#                 k,
+#                 "latent_idx",
+#                 latent_idx,
+#                 "linear mean",
+#                 f"{np.mean(scores[latent_idx]['linear']):.3f} +- {np.std(scores[latent_idx]['linear']) :.3f}",
+#                 "nonlinear mean",
+#                 f"{np.mean(scores[latent_idx]['nonlinear']):.3f} +- {np.std(scores[latent_idx]['nonlinear']):.3f}",
+#             ]
+#             writer.writerow(wri)
+#             fileobj.close()
