@@ -660,6 +660,42 @@ def generate_latent_space(args):
 # ------------------ Evaluate --------------------
 # ------------------------------------------------------------------
 
+def save_representations(args, hz_dict, all_zs):
+    k = 0  # view 1
+    l = 1  # view 2
+    save_path = args.save_dir
+    # i = 11  # batch number
+    for i in range(args.num_eval_batches):
+        subset = (0, 1)
+        predicted_content_idx = hz_dict[k]["est_c_ind"][subset][i]
+        batch_size = hz_dict[k]["hz"][i].shape[0]
+        # recovered Z from view 0
+        z0_hat0 = np.take_along_axis(
+            hz_dict[k]["hz"][i],
+            np.tile(predicted_content_idx[None], (batch_size, 1)),
+            axis=-1,
+        )
+        # recovered Z from view 1
+        z0_hat1 = np.take_along_axis(
+            hz_dict[l]["hz"][i],
+            np.tile(predicted_content_idx[None], (batch_size, 1)),
+            axis=-1,
+        )
+        z0_est = np.column_stack([z0_hat0, z0_hat1])
+        file_path = os.path.join(save_path, f"z0est_batch{i}.csv")
+        np.savetxt(file_path, z0_est, delimiter=",")
+
+        z0 = all_zs[i, :, 0][:, None]
+        z1 = all_zs[i, :, 1][:, None]
+        z2 = all_zs[i, :, 2][:, None]
+        x = all_zs[i, :, 3][:, None]
+        y = all_zs[i, :, 4][:, None]
+        z_true = np.column_stack([z0, z1, z2, x, y])
+        file_path = os.path.join(save_path, f"ztrue_batch{i}.csv")
+        np.savetxt(file_path, z_true, delimiter=",")
+    
+
+
 
 # Rest of the code...
 def evaluate(models, latent_space, args):
@@ -705,6 +741,9 @@ def evaluate(models, latent_space, args):
         num_batches=num_batches,
         args=args,
     )
+    
+    # save the representations
+    save_representations(args, hz_dict, all_zs)
 
     # standardize the estimated latents hz
     data_shape = hz_dict[0]["hz"].shape  # [num_batches, batch_size, nSk]
