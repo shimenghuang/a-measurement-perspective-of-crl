@@ -9,9 +9,41 @@ library(xgboost)
 library(ranger)
 options(ranger.num.threads = 8)
 
+# ---- load results from python ----
+
+res_a <- read.csv(
+    "results/numerical/res_five_latents_a.csv",
+    header = TRUE
+)
+res_a %>%
+    summarise(
+        tmex_mean = mean(tmex_score),
+        tmex_sd = sd(tmex_score),
+    )
+
+res_b <- read.csv(
+    "results/numerical/res_five_latents_b.csv",
+    header = TRUE
+)
+res_b %>%
+    summarise(
+        tmex_mean = mean(tmex_score),
+        tmex_sd = sd(tmex_score),
+    )
+
+res_c <- read.csv(
+    "results/numerical/res_five_latents_c.csv",
+    header = TRUE
+)
+res_c %>%
+    summarise(
+        tmex_mean = mean(tmex_score),
+        tmex_sd = sd(tmex_score),
+    )
+
 # ---- load data from one experiment ----
 
-exper_id <- "five_latents"
+exper_id <- "five_latents_b"
 batch_nums <- 0:49
 dat_ls <- lapply(batch_nums, \(batch_num) {
     z_true <- read.csv(paste0(
@@ -543,7 +575,7 @@ helper_pval_block <- function(learned_block, exper_id = NULL) {
 # ---- compare three models ----
 
 set.seed(123)
-exper_id <- "five_latents"
+exper_id <- "five_latents_a"
 batch_nums <- 0:49
 dat_ls <- lapply(batch_nums, \(batch_num) {
     z_true <- read.csv(paste0(
@@ -566,7 +598,7 @@ dat_good <- do.call(rbind, dat_ls)
 dat_good$batch_num <- as.integer(dat_good$batch_num)
 dat_good$exper_id <- "five_latents"
 
-exper_id <- "five_latents_bad"
+exper_id <- "five_latents_b"
 batch_nums <- 0:49
 dat_ls <- lapply(batch_nums, \(batch_num) {
     z_true <- read.csv(paste0(

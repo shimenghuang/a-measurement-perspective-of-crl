@@ -830,7 +830,12 @@ def main():
             args.model_id = f"run_{stamp}_{uuid.uuid4().hex[:4]}"
     args.save_dir = os.path.join(args.model_dir, args.model_id)
     os.makedirs(args.save_dir, exist_ok=True)
-    with open(os.path.join(args.save_dir, "settings.json"), "w") as fp:
+    with open(
+        os.path.join(
+            args.save_dir, f"settings_evaluate{int(args.evaluate)}.json"
+        ),
+        "w",
+    ) as fp:
         json.dump(args.__dict__, fp, ensure_ascii=False)
     args = update_args(args)  # update subsetss and information
 
