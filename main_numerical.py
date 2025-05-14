@@ -5,10 +5,10 @@ import csv
 import json
 import os
 import random
+import uuid  # ← here
+from datetime import datetime
 from itertools import chain
 from pathlib import Path
-import uuid                  # ← here
-
 
 import encoders
 import invertible_network_utils
@@ -25,8 +25,6 @@ from sklearn.metrics import r2_score
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
-
-from datetime import datetime
 
 if torch.cuda.is_available():
     device = "cuda:0"
@@ -660,6 +658,7 @@ def generate_latent_space(args):
 # ------------------ Evaluate --------------------
 # ------------------------------------------------------------------
 
+
 def save_representations(args, hz_dict, all_zs):
     k = 0  # view 1
     l = 1  # view 2
@@ -693,8 +692,6 @@ def save_representations(args, hz_dict, all_zs):
         z_true = np.column_stack([z0, z1, z2, x, y])
         file_path = os.path.join(save_path, f"ztrue_batch{i}.csv")
         np.savetxt(file_path, z_true, delimiter=",")
-    
-
 
 
 # Rest of the code...
@@ -741,9 +738,6 @@ def evaluate(models, latent_space, args):
         num_batches=num_batches,
         args=args,
     )
-    
-    # save the representations
-    save_representations(args, hz_dict, all_zs)
 
     # standardize the estimated latents hz
     data_shape = hz_dict[0]["hz"].shape  # [num_batches, batch_size, nSk]
@@ -753,6 +747,10 @@ def evaluate(models, latent_space, args):
             .fit_transform(np.concatenate(v["hz"], axis=0))
             .reshape(*data_shape)
         )
+
+    # save the representations
+    if args.evaluate:
+        save_representations(args, hz_dict, all_zs)
 
     # predict individual latents from the estimated content block
     for subset_idx, subset in enumerate(data_dict):
@@ -825,9 +823,9 @@ def main():
     args, parser = parse_args()
     if args.model_id is None:
         slurm_id = os.getenv("SLURM_ARRAY_TASK_ID") or os.getenv("SLURM_JOB_ID")
-        if slurm_id:                               # launched via Slurm
+        if slurm_id:  # launched via Slurm
             args.model_id = f"run_{slurm_id}"
-        else:                                      # local run → timestamp+UUID4
+        else:  # local run → timestamp+UUID4
             stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             args.model_id = f"run_{stamp}_{uuid.uuid4().hex[:4]}"
     args.save_dir = os.path.join(args.model_dir, args.model_id)
