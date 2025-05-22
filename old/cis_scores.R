@@ -19,6 +19,12 @@ res_a %>%
     summarise(
         tmex_mean = mean(tmex_score),
         tmex_sd = sd(tmex_score),
+        r2_z0_mean = mean(r2_z0),
+        r2_z0_sd = sd(r2_z0),
+        r2_z1_mean = mean(r2_z1),
+        r2_z1_sd = sd(r2_z1),
+        r2_z2_mean = mean(r2_z2),
+        r2_z2_sd = sd(r2_z2),
     )
 
 res_b <- read.csv(
@@ -29,6 +35,12 @@ res_b %>%
     summarise(
         tmex_mean = mean(tmex_score),
         tmex_sd = sd(tmex_score),
+        r2_z0_mean = mean(r2_z0),
+        r2_z0_sd = sd(r2_z0),
+        r2_z1_mean = mean(r2_z1),
+        r2_z1_sd = sd(r2_z1),
+        r2_z2_mean = mean(r2_z2),
+        r2_z2_sd = sd(r2_z2),
     )
 
 res_c <- read.csv(
@@ -39,6 +51,12 @@ res_c %>%
     summarise(
         tmex_mean = mean(tmex_score),
         tmex_sd = sd(tmex_score),
+        r2_z0_mean = mean(r2_z0),
+        r2_z0_sd = sd(r2_z0),
+        r2_z1_mean = mean(r2_z1),
+        r2_z1_sd = sd(r2_z1),
+        r2_z2_mean = mean(r2_z2),
+        r2_z2_sd = sd(r2_z2),
     )
 
 # ---- load data from one experiment ----

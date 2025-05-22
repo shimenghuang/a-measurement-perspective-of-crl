@@ -56,7 +56,7 @@ def tmex_batch(df_batch, view_num=0, alpha=0.05, rng=np.random.default_rng()):
         rng=rng,
     )
     pval3 = pcm.pval
-    score1 = int(pval1 < alpha) - 1
+    score1 = abs(int(pval1 < alpha) - 1)
     score2 = int(pval2 < alpha)
     score3 = int(pval3 < alpha)
     tmex_score = score1 + score2 + score3
@@ -139,7 +139,7 @@ def load_and_eval_helper(
 ## Model A, B, C
 rng = np.random.default_rng(123)
 exper_id = "five_latents_a"
-view_num = 0
+view_num = 1
 res_model_a = load_and_eval_helper(
     batch_nums=range(50), exper_id=exper_id, view_num=view_num, alpha=0.05
 )
@@ -148,7 +148,6 @@ res_model_a.to_csv(
 )
 
 exper_id = "five_latents_b"
-view_num = 0
 res_model_b = load_and_eval_helper(
     batch_nums=range(50), exper_id=exper_id, view_num=view_num, alpha=0.05
 )
@@ -157,7 +156,6 @@ res_model_b.to_csv(
 )
 
 exper_id = "five_latents_c"
-view_num = 0
 res_model_c = load_and_eval_helper(
     batch_nums=range(50), exper_id=exper_id, view_num=view_num, alpha=0.05
 )
