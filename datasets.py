@@ -15,9 +15,13 @@ import pandas as pd
 import torch
 from nltk.tokenize import sent_tokenize, word_tokenize
 from torchvision.datasets.folder import pil_loader
+from causalchamber.datasets import Dataset as ChamberData
+
 
 import spaces
 from spaces import NBoxSpace
+
+import inspect
 
 
 class OrderedCounter(Counter, OrderedDict):
@@ -1196,3 +1200,219 @@ class Multimodal3DIdent(MultiviewDataset):
         Returns the number of samples in the dataset.
         """
         return self.num_samples
+
+class MultiviewChambersDataset(torch.utils.data.Dataset):
+    FACTORS = {
+        'camera': {
+            0: 'red',
+            1: 'green',
+            2: 'blue',
+            3: 'pol_1',
+            4: 'pol_2'
+        },
+        'current_intensities': {
+            0: 'red',
+            1: 'green',
+            2: 'blue'
+        },
+        'angle_1': {
+            0: 'pol_1'
+        },
+        'angle_2': {
+            0: 'pol_2'
+        }
+    }
+
+    DISCRETE_FACTORS = {
+        'camera': {},
+        'current_intensities': {},
+        'angle_1': {},
+        'angle_2': {}
+    }
+
+    def __init__(self, dataset, data_root, exp_name='scm_2'):
+        super().__init__()
+
+        self.img_base_path = os.path.join(data_root, dataset)
+        self.exp_name = exp_name
+
+        chamber_data = ChamberData(name=dataset,
+                                   root=data_root,
+                                   download=True)
+
+        # Get observational data
+        obs_df = chamber_data.get_experiment(
+            name=f'{exp_name}_reference').as_pandas_dataframe()
+
+        # Get interventional data (not important that it is interventional, just more data!)
+        red_df = chamber_data.get_experiment(
+            name=f'{exp_name}_red').as_pandas_dataframe()
+        green_df = chamber_data.get_experiment(
+            name=f'{exp_name}_green').as_pandas_dataframe()
+        blue_df = chamber_data.get_experiment(
+            name=f'{exp_name}_blue').as_pandas_dataframe()
+        pol_1_df = chamber_data.get_experiment(
+            name=f'{exp_name}_pol_1').as_pandas_dataframe()
+        pol_2_df = chamber_data.get_experiment(
+            name=f'{exp_name}_pol_2').as_pandas_dataframe()
+
+        self.data_df = pd.concat([obs_df, red_df, green_df, blue_df, pol_1_df, pol_2_df])
+        self.env_idxs = np.concatenate(
+            [np.repeat([i], len(df)) for i, df in
+             enumerate([obs_df, red_df, green_df, blue_df, pol_1_df, pol_2_df])]
+        )
+
+        # Standardization for (non-image) views
+        self.mean_ci = self.data_df[['current', 'ir_1', 'ir_2']].mean()
+        self.std_ci = self.data_df[['current', 'ir_1', 'ir_2']].std()
+
+        self.mean_angle_1 = self.data_df[['angle_1']].mean()
+        self.std_angle_1 = self.data_df[['angle_1']].std()
+
+        self.mean_angle_2 = self.data_df[['angle_2']].mean()
+        self.std_angle_2 = self.data_df[['angle_2']].std()
+
+        Z = self.data_df[['red', 'green', 'blue', 'pol_1', 'pol_2']]
+
+        # Standardize latents
+        self.Z = (Z - Z.mean()) / Z.std()
+
+    def _env_name_map(self, idx):
+        env_list = ['reference', 'red', 'green', 'blue', 'pol_1', 'pol_2']
+        map = [f'{self.exp_name}_{env}' for env in env_list]
+
+        return map[idx]
+
+    def __len__(self):
+        return len(self.data_df)
+
+    def __getitem__(self, item):
+        samples = {}
+
+        img_path = os.path.join(self.img_base_path,
+                                self._env_name_map(self.env_idxs[item]),
+                                'images_64',
+                                self.data_df['image_file'].iloc[item])
+        img_sample = skimage.io.imread(img_path)
+        img_sample = img_sample / 255.0
+        samples['camera'] = [torch.as_tensor(
+            img_sample.transpose((2, 0, 1)), dtype=torch.float32)]
+
+        ci_sample = (self.data_df[['current', 'ir_1', 'ir_2']].iloc[item] - self.mean_ci) / self.std_ci
+        samples['current_intensities'] = [torch.as_tensor(
+            ci_sample, dtype=torch.float32
+        )]
+
+        angle_1_sample = (self.data_df[['angle_1']].iloc[item] - self.mean_angle_1) / self.std_angle_1
+        samples['angle_1'] = [torch.as_tensor(
+            angle_1_sample, dtype=torch.float32
+        )]
+
+        angle_2_sample = (self.data_df[['angle_2']].iloc[item] - self.mean_angle_2) / self.std_angle_2
+        samples['angle_2'] = [torch.as_tensor(
+            angle_2_sample, dtype=torch.float32
+        )]
+
+        samples['z_camera'] = [{'red': self.Z['red'].iloc[item],
+                                'green': self.Z['green'].iloc[item],
+                                'blue': self.Z['blue'].iloc[item],
+                                'pol_1': self.Z['pol_1'].iloc[item],
+                                'pol_2': self.Z['pol_2'].iloc[item]}]
+        samples['z_current_intensities'] = [{'red': self.Z['red'].iloc[item],
+                                             'green': self.Z['green'].iloc[item],
+                                             'blue': self.Z['blue'].iloc[item]}]
+        samples['z_angle_1'] = [{'pol_1': self.Z['pol_1'].iloc[item]}]
+        samples['z_angle_2'] = [{'pol_2': self.Z['pol_2'].iloc[item]}]
+
+        return samples
+
+
+class MultiviewChambersSemiSynthDataset(MultiviewChambersDataset):
+    def __init__(self, dataset, data_root, exp_name='scm_2', transforms=[]):
+        # super().__init__(dataset, data_root, exp_name)  # TODO: uncomment when using the regular chambers data
+
+        assert len(transforms) == 4, 'Require exactly 4 transforms!'
+
+        for transform in transforms:
+            try:
+                for p in transform.parameters():
+                    p.requires_grad = False
+            except AttributeError:
+                pass
+
+        self.transforms = transforms
+
+        # For now: load latents from files, use regular chamber data later
+        obs_path = os.path.join(data_root, 'bucholz_1_obs.txt')
+        obs_df = pd.read_csv(obs_path, sep=',')[
+            ['red', 'green', 'blue', 'pol_1', 'pol_2']]
+        red_path = os.path.join(data_root, 'bucholz_1_red.txt')
+        red_df = pd.read_csv(red_path, sep=',')[
+            ['red', 'green', 'blue', 'pol_1', 'pol_2']]
+        green_path = os.path.join(data_root, 'bucholz_1_green.txt')
+        green_df = pd.read_csv(green_path, sep=',')[
+            ['red', 'green', 'blue', 'pol_1', 'pol_2']]
+        blue_path = os.path.join(data_root, 'bucholz_1_blue.txt')
+        blue_df = pd.read_csv(blue_path, sep=',')[
+            ['red', 'green', 'blue', 'pol_1', 'pol_2']]
+        pol_1_path = os.path.join(data_root, 'bucholz_1_pol_1.txt')
+        pol_1_df = pd.read_csv(pol_1_path, sep=',')[
+            ['red', 'green', 'blue', 'pol_1', 'pol_2']]
+        pol_2_path = os.path.join(data_root, 'bucholz_1_pol_2.txt')
+        pol_2_df = pd.read_csv(pol_2_path, sep=',')[
+            ['red', 'green', 'blue', 'pol_1', 'pol_2']]
+
+        self.data_df = pd.concat( [obs_df, red_df, green_df, blue_df, pol_1_df, pol_2_df])
+        self.env_idxs = np.concatenate(
+            [np.repeat([i], len(df)) for i, df in
+             enumerate([obs_df, red_df, green_df, blue_df, pol_1_df, pol_2_df])]
+        )
+
+        # Apply transforms (to non-image views), standardize
+        self.ci = self.transforms[1](torch.as_tensor(
+            self.data_df[['red', 'green', 'blue']].to_numpy(), dtype=torch.float32))
+        self.ci = (self.ci - torch.mean(self.ci, dim=0)) / torch.std(self.ci, dim=0)
+        self.angle_1 = self.transforms[2](torch.as_tensor(
+            self.data_df[['pol_1']].to_numpy(), dtype=torch.float32))
+        self.angle_1 = (self.angle_1 - torch.mean(self.angle_1, dim=0)) / torch.std(self.angle_1, dim=0)
+        self.angle_2 = self.transforms[3](torch.as_tensor(
+            self.data_df[['pol_2']].to_numpy(), dtype=torch.float32))
+        self.angle_2 = (self.angle_2 - torch.mean(self.angle_2, dim=0)) / torch.std(self.angle_2, dim=0)
+
+        Z = self.data_df[['red', 'green', 'blue', 'pol_1', 'pol_2']]
+
+        # Standardize latents
+        self.Z = (Z - Z.mean()) / Z.std()
+
+    def __getitem__(self, item):
+        samples = {}
+        if inspect.ismethod(self.transforms[0]):  # for decoder simulator
+            img_sample = self.transforms[0](
+                self.data_df[['red', 'green', 'blue', 'pol_1', 'pol_2']].iloc[
+                    item].to_frame().T).squeeze()
+            img_sample = img_sample / 255.0
+            img_sample = torch.as_tensor(img_sample.transpose(2, 0, 1))
+        else:
+            img_sample = self.transforms[0](
+                torch.as_tensor(
+                    self.data_df[['red', 'green', 'blue', 'pol_1', 'pol_2']].iloc[item],
+                    dtype=torch.float32))
+
+        samples['camera'] = [img_sample]
+        samples['current_intensities'] = [self.ci[item]]
+        samples['angle_1'] = [self.angle_1[item]]
+        samples['angle_2'] = [self.angle_2[item]]
+
+        samples['z_camera'] = [{'red': self.Z['red'].iloc[item],
+                                'green': self.Z['green'].iloc[item],
+                                'blue': self.Z['blue'].iloc[item],
+                                'pol_1': self.Z['pol_1'].iloc[item],
+                                'pol_2': self.Z['pol_2'].iloc[item]}]
+        samples['z_current_intensities'] = [{'red': self.Z['red'].iloc[item],
+                                             'green': self.Z['green'].iloc[
+                                                 item],
+                                             'blue': self.Z['blue'].iloc[item]}]
+        samples['z_angle_1'] = [{'pol_1': self.Z['pol_1'].iloc[item]}]
+        samples['z_angle_2'] = [{'pol_2': self.Z['pol_2'].iloc[item]}]
+
+        return samples
