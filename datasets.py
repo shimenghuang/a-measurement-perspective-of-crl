@@ -1,7 +1,7 @@
 """
 Collection of datasets.
 """
-
+import inspect
 import io
 import json
 import os
@@ -9,19 +9,19 @@ from abc import abstractmethod
 from collections import Counter, OrderedDict
 from typing import Callable, Optional
 
-import faiss
+from causalchamber.datasets import Dataset as ChamberData
+# import faiss
 import numpy as np
 import pandas as pd
+import skimage
 import torch
 from nltk.tokenize import sent_tokenize, word_tokenize
 from torchvision.datasets.folder import pil_loader
-from causalchamber.datasets import Dataset as ChamberData
 
-
+# import spaces
 import spaces
 from spaces import NBoxSpace
 
-import inspect
 
 
 class OrderedCounter(Counter, OrderedDict):
@@ -345,7 +345,8 @@ class MPI3D(MultiviewDataset):
             int(space.uniform(original=idx[i], size=1).item()) if i in change_list else idx[i]
             for i, space in MPI3D.LATENT_SPACES["image"].items()
         )
-        return aug_idx, aug_idx, self.transform(self.data[*aug_idx])  # idx, z, x
+        # return aug_idx, aug_idx, self.transform(self.data[*aug_idx])  # idx, z, x
+        return aug_idx, aug_idx, None  # Hack
 
     def __getitem__(self, idx):
         """
@@ -1200,6 +1201,100 @@ class Multimodal3DIdent(MultiviewDataset):
         Returns the number of samples in the dataset.
         """
         return self.num_samples
+
+
+class MultiviewSynthDataset(torch.utils.data.Dataset):
+    # First attempt: try to reconstruct something similar to the image data that they use,
+    # just with synthetic views and different encoders
+    FACTORS = {
+        'view_1': {
+            0: "z_0",
+            1: "z_1",
+            2: "z_2",
+        },
+        'view_2': {
+            0: "z_0",
+            1: "z_1",
+            2: "z_3",
+        },
+        'view_3': {
+            0: "z_0",
+            1: "z_2",
+            2: "z_3",
+        },
+        'view_4': {
+            0: "z_1",
+            1: "z_2",
+            2: "z_3",
+        },
+    }
+
+    DISCRETE_FACTORS = {
+        'view_1': {},
+        'view_2': {},
+        'view_3': {},
+        'view_4': {},
+    }
+
+    def __init__(self, seed=0, n=100000, transforms = []):
+        super().__init__()
+
+        self.rs = np.random.RandomState(seed=seed)
+
+        for transform in transforms:
+            for p in transform.parameters():
+                p.requires_grad = False
+
+        d = 4  # latent dimension
+
+        # Sample from an independent Gaussian
+        self.Z = self.rs.multivariate_normal(mean=np.zeros(d), cov=np.eye(d),
+                                             size=n)
+
+        # Apply mixing functions
+        assert len(transforms) == 4, 'Need exactly 4 mixing functions!'
+
+        x_view_1 = transforms[0](torch.as_tensor(self.Z[:, [0, 1, 2]], dtype=torch.float32))
+        x_view_2 = transforms[0](torch.as_tensor(self.Z[:, [0, 1, 3]], dtype=torch.float32))
+        x_view_3 = transforms[0](torch.as_tensor(self.Z[:, [0, 2, 3]], dtype=torch.float32))
+        x_view_4 = transforms[0](torch.as_tensor(self.Z[:, [1, 2, 3]], dtype=torch.float32))
+
+        # Standardize views
+        self.x_view_1 = (x_view_1 - torch.mean(x_view_1, dim=0)) / torch.std(
+            x_view_1, dim=0)
+        self.x_view_2 = (x_view_2 - torch.mean(x_view_2, dim=0)) / torch.std(
+            x_view_2, dim=0)
+        self.x_view_3 = (x_view_1 - torch.mean(x_view_3, dim=0)) / torch.std(
+            x_view_3, dim=0)
+        self.x_view_4 = (x_view_4 - torch.mean(x_view_4, dim=0)) / torch.std(
+            x_view_4, dim=0)
+
+    def __len__(self):
+        return len(self.Z)
+
+    def __getitem__(self, item):
+        samples = {}
+
+        samples['view_1'] = [self.x_view_1[item]]
+        samples['view_2'] = [self.x_view_2[item]]
+        samples['view_3'] = [self.x_view_3[item]]
+        samples['view_4'] = [self.x_view_4[item]]
+
+        samples['z_view_1'] = [{'z_0': self.Z[item, 0],
+                                'z_1': self.Z[item, 1],
+                                'z_2': self.Z[item, 2]}]
+        samples['z_view_2'] = [{'z_0': self.Z[item, 0],
+                                'z_1': self.Z[item, 1],
+                                'z_3': self.Z[item, 3]}]
+        samples['z_view_3'] = [{'z_0': self.Z[item, 0],
+                                'z_2': self.Z[item, 2],
+                                'z_3': self.Z[item, 3]}]
+        samples['z_view_4'] = [{'z_1': self.Z[item, 1],
+                                'z_2': self.Z[item, 2],
+                                'z_3': self.Z[item, 3]}]
+
+        return samples
+
 
 class MultiviewChambersDataset(torch.utils.data.Dataset):
     FACTORS = {

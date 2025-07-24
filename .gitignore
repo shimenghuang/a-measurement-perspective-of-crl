@@ -171,3 +171,4 @@ cython_debug/
 lightning_logs
 *.png
 *.pdf
+wandb

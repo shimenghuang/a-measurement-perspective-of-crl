@@ -4,7 +4,7 @@ import sys
 from absl import app, flags
 from causalchamber.datasets import Dataset as ChamberData
 import numpy as np
-from skimage import io
+# from skimage import io
 from sklearn.metrics import r2_score
 import torch
 from torch.utils.data import Dataset, Subset, DataLoader
@@ -14,12 +14,16 @@ import wandb
 from crc.utils import get_device
 from crc.shared.architectures import FCEncoder
 
+from skimage import io
+
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('data_root', './data/chamber_downloads',
+flags.DEFINE_string('data_root', '/nfs/scistore19/locatgrp/dyao/DATA/causal_chamber',
                     'Root directory where data is saved.')
-flags.DEFINE_integer('epochs', 100, 'Training epochs.')
+flags.DEFINE_integer('epochs', 30, 'Training epochs.') # 30 converged
 
+flags.DEFINE_string('wandb_project', 'supervised', 'WandB project name.')
+flags.DEFINE_string('wandb_username', 'dyao', 'WandB username.')
 
 class SupervisedChambersDataset(Dataset):
     def __init__(self, dataset, dataroot, exp):
@@ -27,7 +31,7 @@ class SupervisedChambersDataset(Dataset):
 
         chamber_data = ChamberData(name=dataset,
                                    root=dataroot,
-                                   download=True)
+                                   download=False)
 
         self.data_df = chamber_data.get_experiment(name=exp).as_pandas_dataframe()
 
@@ -43,8 +47,8 @@ class SupervisedChambersDataset(Dataset):
         img = io.imread(os.path.join(self.base_img_path,
                                      self.data_df['image_file'].iloc[item]))
         img = img / 255.0
-        img = img * 2.0 - 1.0
-
+        img = img * 2.0 - 1.0 # [64, 64, 3] -> normalize to [-1, 1]
+        
         latents = self.latents[item]
 
         return torch.as_tensor(img, dtype=torch.float32).flatten(), \
@@ -93,13 +97,16 @@ def main(argv):
     train_dataset = Subset(SupervisedChambersDataset(
         dataset='lt_crl_benchmark_v1',
         dataroot=FLAGS.data_root,
-        exp='citris_1'),
+        exp='buchholz_1_obs'),
         np.arange(1000, 6000))
     test_dataset = Subset(SupervisedChambersDataset(
         dataset='lt_crl_benchmark_v1',
         dataroot=FLAGS.data_root,
-        exp='citris_1'),
+        exp='buchholz_1_obs'),
         np.arange(1000))
+    
+    print('dataset loaded')
+    
 
     train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     test_dataloader = DataLoader(test_dataset, batch_size=256, shuffle=False)
@@ -117,7 +124,7 @@ def main(argv):
     for epoch in tqdm(range(FLAGS.epochs)):
         model.train()
         for x, y in train_dataloader:
-            x = x.to(device)
+            x = x.to(device) 
             y = y.to(device)
             # Zero gradients
             optimizer.zero_grad()
@@ -151,6 +158,7 @@ def main(argv):
 
     y_test = np.concatenate(y_test_list, axis=0)
     y_hat_test = np.concatenate(y_hat_test_list, axis=0)
+    breakpoint()
 
     # Get score, print results
     print(r2_score(y_test, y_hat_test))

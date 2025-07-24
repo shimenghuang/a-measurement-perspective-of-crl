@@ -17,13 +17,13 @@ import wandb
 
 from crc.utils import get_device, train_val_test_split
 from crc.shared.architectures import FCEncoder
-from datasets import Multimodal3DIdent, MultiviewSynthDataset, MultiviewChambersDataset
-from main_multimodal import train_step, get_data, eval_step
-import dci
-
+from datasets import Multimodal3DIdent, \
+    MultiviewSynthDataset, MultiviewChambersDataset
 from encoders import TextEncoder2D
 from infinite_iterator import InfiniteIterator
 from losses import infonce_loss
+from main_multimodal import train_step, get_data, eval_step
+import dci
 
 FLAGS = flags.FLAGS
 
@@ -377,7 +377,6 @@ def main(argv):
                                        subsets=subsets,
                                        n_views_arg=n_views,
                                        selection='ground_truth')
-            breakpoint()
             loss_values.append(loss_value)
 
             # wandb logging
