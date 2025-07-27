@@ -164,46 +164,11 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    # app.run(main)
-    from sklearn.neural_network import MLPRegressor
-    from sklearn.model_selection import train_test_split
+    app.run(main)
     
     from datasets import MultiviewChambersDataset
-    dataset = 'lt_crl_benchmark_v1'
-    data_root = '/nfs/scistore19/locatgrp/dyao/DATA/causal_chamber'
+    
+    model = MLPRegressor(max_iter=5000) 
     
     
-    dataset = MultiviewChambersDataset(dataset, data_root, exp_name='buchholz_1')
     
-    
-    def check_mixing(inputs, latents):
-        X_train, X_test, y_train, y_test = train_test_split(inputs, latents, test_size=0.2, random_state=42)
-    
-        # Define the model
-        model = MLPRegressor(hidden_layer_sizes=[128]*3, max_iter=500) 
-        model.fit(X_train, y_train)
-        y_train_hat = model.predict(X_train)
-        train_r2_score = r2_score(y_train, y_train_hat)
-        y_hat = model.predict(X_test)
-        test_r2_score= r2_score(y_test, y_hat)
-        return train_r2_score, test_r2_score
-
-
-    ############### checking the second view ###############
-    # store results in a csv file
-    import pandas as pd
-    results = []
-    results.append(('view','latent_idx', 'train_r2_score', 'test_r2_score'))
-    ci = (dataset.data_df[['current', 'ir_1', 'ir_2']] - dataset.mean_ci) / dataset.std_ci
-    angle_1 = (dataset.data_df[['angle_1']] - dataset.mean_angle_1) / dataset.std_angle_1
-    angle_2 = (dataset.data_df[['angle_2']] - dataset.mean_angle_2) / dataset.std_angle_2
-
-    
-    for view_name, view in zip(['current', 'angle_1', 'angle_2'], [ci, angle_1, angle_2]):
-        for i in range(5):
-            train_r2_score, test_r2_score = check_mixing(view.to_numpy(), dataset.Z.to_numpy()[...,i])
-            results.append((view_name, f"latent_{i}", train_r2_score, test_r2_score))
-    results_df = pd.DataFrame(results[1:], columns=results[0])
-    results_df.to_csv('supervised_fit.csv', index=False)
-
-

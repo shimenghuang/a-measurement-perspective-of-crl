@@ -1334,10 +1334,11 @@ class MultiviewChambersDataset(torch.utils.data.Dataset):
         chamber_data = ChamberData(name=dataset,
                                    root=data_root,
                                    download=True)
+        
 
         # Get observational data
         obs_df = chamber_data.get_experiment(
-            name=f'{exp_name}_reference').as_pandas_dataframe()
+            name=f'{exp_name}_obs').as_pandas_dataframe()
 
         # Get interventional data (not important that it is interventional, just more data!)
         red_df = chamber_data.get_experiment(
@@ -1373,7 +1374,7 @@ class MultiviewChambersDataset(torch.utils.data.Dataset):
         self.Z = (Z - Z.mean()) / Z.std()
 
     def _env_name_map(self, idx):
-        env_list = ['reference', 'red', 'green', 'blue', 'pol_1', 'pol_2']
+        env_list = ['obs', 'red', 'green', 'blue', 'pol_1', 'pol_2']
         map = [f'{self.exp_name}_{env}' for env in env_list]
 
         return map[idx]

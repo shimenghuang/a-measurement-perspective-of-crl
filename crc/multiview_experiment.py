@@ -1,3 +1,5 @@
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import copy
 import csv
 import os
@@ -15,7 +17,7 @@ from torchvision import transforms
 from torchvision.models import resnet18
 import wandb
 
-from crc.utils import get_device, train_val_test_split
+from crc.helpers import get_device, train_val_test_split
 from crc.shared.architectures import FCEncoder
 from datasets import Multimodal3DIdent, \
     MultiviewSynthDataset, MultiviewChambersDataset
@@ -31,7 +33,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_enum('model', 'multiview_crl', ['multiview_crl'],
                   'Model to train.')
-flags.DEFINE_string('data_root', './data/chamber_downloads', 'Root directory where data is saved.')
+flags.DEFINE_string('data_root', '/nfs/scistore19/locatgrp/dyao/DATA/causal_chamber',
+                    'Root directory where data is saved.')
 flags.DEFINE_string('root_dir', './results', 'Root directory where output is saved.')
 flags.DEFINE_enum('dataset', 'lt_crl_benchmark_v1', ['multimodal3di',
                                                'multiview_synth',
@@ -42,11 +45,11 @@ flags.DEFINE_enum('exp_name', 'buchholz_1', ['buchholz_1', 'buchholz_1_synth_det
                   'Name for the experiment in the dataset.')
 flags.DEFINE_string('task', None, 'Experimental task for training.')
 flags.DEFINE_bool('overwrite_data', False, 'Overwrite existing saved data.')
-flags.DEFINE_string('run_name', None, 'Name for the training run.')
+flags.DEFINE_string('run_name', "", 'Name for the training run.')
 
 # Training params
 # flags.DEFINE_enum('optim', 'adam', ['adam', 'sgd'], 'Optimizer for training.')
-flags.DEFINE_float('lr', 0.0005, 'Learning rate.')
+flags.DEFINE_float('lr', 0.0001, 'Learning rate.')
 flags.DEFINE_integer('batch_size', 128, 'Batch size.')
 flags.DEFINE_integer('train_steps', 100000, 'Training steps.')
 flags.DEFINE_integer('checkpoint_steps', 1000, 'Checkpoint interval steps.')
@@ -63,8 +66,8 @@ flags.DEFINE_bool('eval_dci', False, 'Evaluate DCI metric.')
 flags.DEFINE_bool('eval_style', False, 'Evaluate style variables, too.')
 
 # wandb params
-flags.DEFINE_string('wandb_project', None, 'Name of the wandb project to log experiments.')
-flags.DEFINE_string('wandb_username', None, 'Username for wandb logging.')
+flags.DEFINE_string('wandb_project', 'multiview-chamber', 'Name of the wandb project to log experiments.')
+flags.DEFINE_string('wandb_username', 'dyao', 'Username for wandb logging.')
 
 
 def get_datasets(dataset, data_root, exp_name):
@@ -203,7 +206,7 @@ def get_encoders(dataset):
                 torch.nn.LeakyReLU(),
                 torch.nn.Linear(100, 5),
             )
-            encoder_2 = FCEncoder(in_dim=5, latent_dim=5,
+            encoder_2 = FCEncoder(in_dim=3, latent_dim=5,
                                   hidden_dims=[64, 256, 256, 256, 64])
             encoder_3 = FCEncoder(in_dim=1, latent_dim=5,
                                   hidden_dims=[64, 256, 256, 256, 64])
@@ -349,7 +352,7 @@ def main(argv):
             "batch_size": FLAGS.batch_size,
             "shuffle": True,
             "drop_last": True,
-            "num_workers": 24 if not gettrace() else 0,
+            "num_workers": 8 if not gettrace() else 0,
             "pin_memory": True,
         }
 
@@ -433,7 +436,7 @@ def main(argv):
         "batch_size": FLAGS.batch_size,
         "shuffle": True,
         "drop_last": True,
-        "num_workers": 24 if not gettrace() else 0,
+        "num_workers": 8 if not gettrace() else 0,
         "pin_memory": True,
     }
 
@@ -524,6 +527,7 @@ def main(argv):
                 writer.writerow(dci_score)
             continue
 
+       
         # Standard evaluation begins here
         for ix, factor_name in factors_m.items():
             for s in subsets:
@@ -536,6 +540,8 @@ def main(argv):
 
                 # append results
                 results.append(eval_step(ix, s, m, factor_name, discrete_factors_m, data))
+                if m == 'angle_1':
+                    breakpoint()  # Debugging point to check the angle_1 factor
             # independent component extraction
             if FLAGS.eval_style and len(style_indices) > 0:
                 # select data

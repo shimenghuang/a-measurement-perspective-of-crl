@@ -10,7 +10,7 @@ from skimage import io
 import torch
 from torch.utils.data import Dataset
 
-from crc.utils import get_task_environments
+from crc.helpers import get_task_environments
 from crc.baselines.contrastive_crl.src.models import EmbeddingNet
 
 
