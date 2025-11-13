@@ -1,4 +1,4 @@
-# Numerical simulation in "The third pillar of causal analysis? A measurement perspective on causal representations"
+# The third pillar of causal analysis? A measurement perspective on causal representations
 
 This directory contains the code to reproduce the numerical simulations in the paper "The third pillar of causal analysis? A measurement perspective on causal representations" [1].
 
@@ -6,7 +6,7 @@ The Test-based Measurement EXclusivity (T-MEX) score proposed in [1] uses condit
 
 The main numerical simulation (Section 5.1 in [1]) uses the multi-view with partial observability by [2] whose dependencies can be installed as below. 
 
-## Instal dependencies of Multi-View CRL with Partial Observability
+## Install dependencies of Multi-View CRL with Partial Observability
 
 ```shell
 cd $PROJECT_DIR
