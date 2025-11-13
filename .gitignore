@@ -4,6 +4,8 @@
 *.png
 *.pdf
 *.rds
+logs/**
+tmex_demo_results/**
 
 results
 model

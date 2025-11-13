@@ -72,7 +72,6 @@ class CompositionEncMix(nn.Module):
         mixing_fns (list): List of mixing functions.
         encoders (list): List of encoders.
         H (torch.nn.ModuleList): List of composed functions.
-
     """
 
     def __init__(self, mixing_fns, encoders, *args, **kwargs) -> None:
